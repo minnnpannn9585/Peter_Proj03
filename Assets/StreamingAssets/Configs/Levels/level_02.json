@@ -1,0 +1,161 @@
+{
+  "id": "level_02",
+  "displayName": "Interchange Yard",
+  "grid": {
+    "size": 2.0,
+    "levelHeight": 1.5,
+    "cells": [58, 40],
+    "origin": [0, 0],
+    "visualScale": 2.1,
+    "viewPadCells": 1.25
+  },
+  "rules": {
+    "baseSpeed": 5.0,
+    "minGap": 1.15,
+    "jamStallSeconds": 3.0,
+    "fastMultiplier": 2.0,
+    "minBeltCells": 2,
+    "maxBeltCells": 8,
+    "minRampCellsPerLevel": 2
+  },
+  "gate": { "holdSeconds": 8.0 },
+  "loadout": [ { "device": "gate", "count": 2 } ],
+
+  // Four passes of roughly 25 parcels, so about 100 for the level.
+  // Wave 3 leaves inlet and colour open, so it rolls both.
+  // Wave 5 sets "parallel", meaning it runs at the same time as wave 4 on another inlet.
+  "spawn": {
+    "seed": 202,
+    "startDelay": 1.0,
+    "repeat": 4,
+    "waves": [
+      { "inlet": "in_a", "color": "red",   "count": 6, "spacing": 0.0, "delayAfter": 4.0 },
+      { "inlet": "in_b", "color": "green", "count": 5, "spacing": 0.0, "delayAfter": "random 3~5" },
+      { "inlet": "random", "color": "random", "count": "random 4~6", "spacing": 0.0, "delayAfter": 3.5 },
+      { "inlet": "in_c", "color": "blue",   "count": 5, "spacing": 0.0, "delayAfter": 0.0 },
+      { "inlet": "in_a", "color": "yellow", "count": 4, "spacing": 0.0,
+        "delayAfter": "random 4~6", "parallel": true }
+    ]
+  },
+
+  "nodes": [
+    { "id": "in_a", "type": "inlet", "cell": [3, 30], "facing": "E" },
+    { "id": "in_b", "type": "inlet", "cell": [3, 22], "facing": "E" },
+    { "id": "in_c", "type": "inlet", "cell": [3, 14], "facing": "E" },
+
+    { "id": "hub_a", "type": "junction", "cell": [9, 30] },
+    { "id": "hub_b", "type": "junction", "cell": [9, 22] },
+    { "id": "hub_c", "type": "junction", "cell": [9, 14] },
+    { "id": "hub_d", "type": "junction", "cell": [45, 30] },
+    { "id": "hub_e", "type": "junction", "cell": [45, 14] },
+
+    { "id": "merge_n", "type": "junction", "cell": [21, 30] },
+    { "id": "merge_s", "type": "junction", "cell": [17, 14] },
+
+    { "id": "bay_red",    "type": "bay", "cell": [53, 34], "color": "Red",    "facing": "E" },
+    { "id": "bay_green",  "type": "bay", "cell": [53, 26], "color": "Green",  "facing": "E" },
+    { "id": "bay_blue",   "type": "bay", "cell": [53, 18], "color": "Blue",   "facing": "E" },
+    { "id": "bay_yellow", "type": "bay", "cell": [53, 10], "color": "Yellow", "facing": "E" },
+
+    { "id": "n_1", "type": "junction", "cell": [17, 30], "plain": true },
+    { "id": "n_2", "type": "junction", "cell": [29, 30], "plain": true },
+    { "id": "n_3", "type": "junction", "cell": [37, 30], "plain": true },
+
+    { "id": "sa_1", "type": "junction", "cell": [9, 26, 1],  "plain": true },
+    { "id": "sa_2", "type": "junction", "cell": [15, 26, 1], "plain": true },
+    { "id": "sa_3", "type": "junction", "cell": [15, 20, 1], "plain": true },
+    { "id": "sa_4", "type": "junction", "cell": [15, 16, 0], "plain": true },
+
+    { "id": "sc_1", "type": "junction", "cell": [15, 14], "plain": true },
+    { "id": "ss_1", "type": "junction", "cell": [25, 14], "plain": true },
+    { "id": "ss_2", "type": "junction", "cell": [33, 14], "plain": true },
+    { "id": "ss_3", "type": "junction", "cell": [41, 14], "plain": true },
+
+    { "id": "sm_1", "type": "junction", "cell": [17, 22], "plain": true },
+    { "id": "sm_2", "type": "junction", "cell": [25, 22], "plain": true },
+    { "id": "sm_3", "type": "junction", "cell": [33, 22], "plain": true },
+    { "id": "sm_4", "type": "junction", "cell": [41, 22], "plain": true },
+    { "id": "sm_5", "type": "junction", "cell": [45, 18], "plain": true },
+
+    { "id": "sc_2", "type": "junction", "cell": [9, 10, 1],  "plain": true },
+    { "id": "sc_3", "type": "junction", "cell": [17, 10, 1], "plain": true },
+    { "id": "sc_4", "type": "junction", "cell": [21, 10, 1], "plain": true },
+    { "id": "sc_5", "type": "junction", "cell": [23, 12, 1], "plain": true },
+    { "id": "sc_6", "type": "junction", "cell": [23, 20, 1], "plain": true },
+    { "id": "sc_7", "type": "junction", "cell": [23, 26, 1], "plain": true },
+    { "id": "sc_8", "type": "junction", "cell": [23, 28, 0], "plain": true },
+
+    { "id": "sb_1", "type": "junction", "cell": [9, 25, 1],  "plain": true },
+    { "id": "sb_2", "type": "junction", "cell": [13, 25, 2], "plain": true },
+    { "id": "sb_3", "type": "junction", "cell": [21, 25, 2], "plain": true },
+    { "id": "sb_4", "type": "junction", "cell": [29, 25, 2], "plain": true },
+    { "id": "sb_5", "type": "junction", "cell": [37, 25, 2], "plain": true },
+    { "id": "sb_6", "type": "junction", "cell": [41, 25, 1], "plain": true },
+    { "id": "sb_7", "type": "junction", "cell": [41, 28, 0], "plain": true },
+
+    { "id": "sd_r", "type": "junction", "cell": [49, 34], "plain": true },
+    { "id": "sd_g", "type": "junction", "cell": [49, 26], "plain": true },
+    { "id": "se_b", "type": "junction", "cell": [49, 18], "plain": true },
+    { "id": "se_y", "type": "junction", "cell": [49, 10], "plain": true }
+  ],
+  "belts": [
+    { "id": "b_in_a", "from": "in_a", "to": "hub_a" },
+    { "id": "b_in_b", "from": "in_b", "to": "hub_b" },
+    { "id": "b_in_c", "from": "in_c", "to": "hub_c" },
+
+    { "id": "b_n1", "from": "hub_a",   "to": "n_1", "output": 0, "canSpeed": true },
+    { "id": "b_n2", "from": "n_1",     "to": "merge_n" },
+    { "id": "b_n3", "from": "merge_n", "to": "n_2" },
+    { "id": "b_n4", "from": "n_2",     "to": "n_3", "canPause": true },
+    { "id": "b_n5", "from": "n_3",     "to": "hub_d" },
+
+    { "id": "b_a1", "from": "hub_a", "to": "sa_1", "output": 1, "allowInstall": false },
+    { "id": "b_a2", "from": "sa_1",  "to": "sa_2" },
+    { "id": "b_a3", "from": "sa_2",  "to": "sa_3" },
+    { "id": "b_a4", "from": "sa_3",  "to": "sa_4", "allowInstall": false },
+    { "id": "b_a5", "from": "sa_4",  "to": "merge_s" },
+
+    { "id": "b_c1", "from": "hub_c", "to": "sc_1", "output": 0 },
+    { "id": "b_c2", "from": "sc_1",  "to": "merge_s" },
+
+    { "id": "b_s1", "from": "merge_s", "to": "ss_1" },
+    { "id": "b_s2", "from": "ss_1",    "to": "ss_2", "canSpeed": true },
+    { "id": "b_s3", "from": "ss_2",    "to": "ss_3" },
+    { "id": "b_s4", "from": "ss_3",    "to": "hub_e" },
+
+    { "id": "b_m1", "from": "hub_b", "to": "sm_1", "output": 0 },
+    { "id": "b_m2", "from": "sm_1",  "to": "sm_2" },
+    { "id": "b_m3", "from": "sm_2",  "to": "sm_3", "canPause": true },
+    { "id": "b_m4", "from": "sm_3",  "to": "sm_4" },
+    { "id": "b_m5", "from": "sm_4",  "to": "sm_5" },
+    { "id": "b_m6", "from": "sm_5",  "to": "hub_e" },
+
+    { "id": "b_cu1", "from": "hub_c", "to": "sc_2", "output": 1, "allowInstall": false },
+    { "id": "b_cu2", "from": "sc_2",  "to": "sc_3" },
+    { "id": "b_cu3", "from": "sc_3",  "to": "sc_4" },
+    { "id": "b_cu4", "from": "sc_4",  "to": "sc_5" },
+    { "id": "b_cu5", "from": "sc_5",  "to": "sc_6" },
+    { "id": "b_cu6", "from": "sc_6",  "to": "sc_7" },
+    { "id": "b_cu7", "from": "sc_7",  "to": "sc_8", "allowInstall": false },
+    { "id": "b_cu8", "from": "sc_8",  "to": "merge_n" },
+
+    { "id": "b_bu1", "from": "hub_b", "to": "sb_1", "output": 1, "allowInstall": false },
+    { "id": "b_bu2", "from": "sb_1",  "to": "sb_2", "allowInstall": false },
+    { "id": "b_bu3", "from": "sb_2",  "to": "sb_3" },
+    { "id": "b_bu4", "from": "sb_3",  "to": "sb_4", "canSpeed": true },
+    { "id": "b_bu5", "from": "sb_4",  "to": "sb_5" },
+    { "id": "b_bu6", "from": "sb_5",  "to": "sb_6", "allowInstall": false },
+    { "id": "b_bu7", "from": "sb_6",  "to": "sb_7", "allowInstall": false },
+    { "id": "b_bu8", "from": "sb_7",  "to": "hub_d", "path": [[43, 28]] },
+
+    { "id": "b_dr1", "from": "hub_d", "to": "sd_r", "output": 0 },
+    { "id": "b_dr2", "from": "sd_r",  "to": "bay_red", "allowInstall": false },
+    { "id": "b_dg1", "from": "hub_d", "to": "sd_g", "output": 1 },
+    { "id": "b_dg2", "from": "sd_g",  "to": "bay_green", "allowInstall": false },
+
+    { "id": "b_eb1", "from": "hub_e", "to": "se_b", "output": 0 },
+    { "id": "b_eb2", "from": "se_b",  "to": "bay_blue", "allowInstall": false },
+    { "id": "b_ey1", "from": "hub_e", "to": "se_y", "output": 1 },
+    { "id": "b_ey2", "from": "se_y",  "to": "bay_yellow", "allowInstall": false }
+  ]
+}

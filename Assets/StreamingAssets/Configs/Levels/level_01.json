@@ -1,0 +1,63 @@
+{
+  "id": "level_01",
+  "displayName": "Tutorial Yard",
+  "grid": {
+    "size": 2.0,
+    "levelHeight": 1.5,
+    "cells": [32, 24],
+    "origin": [0, 0],
+    "visualScale": 2.1,
+    "viewPadCells": 1.25
+  },
+  "rules": {
+    "baseSpeed": 5.0,
+    "minGap": 1.15,
+    "jamStallSeconds": 3.0,
+    "fastMultiplier": 2.0,
+    "minBeltCells": 2,
+    "maxBeltCells": 6,
+    "minRampCellsPerLevel": 2
+  },
+  "gate": { "holdSeconds": 8.0 },
+  "loadout": [ { "device": "gate", "count": 2 } ],
+
+  // Authored parcel schedule. One burst of same-colour parcels at a time, then a rest.
+  // count / spacing / delayAfter accept a number, "random 3~5" or [3, 5].
+  "spawn": {
+    "seed": 101,
+    "startDelay": 1.0,
+    "repeat": 1,
+    "waves": [
+      { "inlet": "in_a", "color": "red",  "count": 6, "spacing": 0.0, "delayAfter": 4.0 },
+      { "inlet": "in_a", "color": "blue", "count": 5, "spacing": 0.0, "delayAfter": "random 3~5" },
+      { "inlet": "in_a", "color": "red",  "count": 4, "spacing": 0.0, "delayAfter": 4.0 },
+      { "inlet": "in_a", "color": "blue", "count": 5, "spacing": 0.0, "delayAfter": 0.0 }
+    ]
+  },
+
+  "nodes": [
+    { "id": "in_a",      "type": "inlet",    "cell": [3, 12],  "facing": "E" },
+    { "id": "s_feed",    "type": "junction", "cell": [9, 12],  "plain": true },
+    { "id": "hub_1",     "type": "junction", "cell": [13, 12] },
+
+    { "id": "sa_1",      "type": "junction", "cell": [16, 15], "plain": true },
+    { "id": "sa_2",      "type": "junction", "cell": [22, 15], "plain": true },
+    { "id": "bay_red",   "type": "bay",      "cell": [27, 15], "color": "Red",  "facing": "E" },
+
+    { "id": "sb_1",      "type": "junction", "cell": [16, 9],  "plain": true },
+    { "id": "sb_2",      "type": "junction", "cell": [22, 9],  "plain": true },
+    { "id": "bay_blue",  "type": "bay",      "cell": [27, 9],  "color": "Blue", "facing": "E" }
+  ],
+  "belts": [
+    { "id": "b_feed", "from": "in_a",   "to": "s_feed" },
+    { "id": "b_main", "from": "s_feed", "to": "hub_1", "canSpeed": true },
+
+    { "id": "b_a1", "from": "hub_1", "to": "sa_1", "output": 0 },
+    { "id": "b_a2", "from": "sa_1",  "to": "sa_2", "canPause": true },
+    { "id": "b_a3", "from": "sa_2",  "to": "bay_red" },
+
+    { "id": "b_b1", "from": "hub_1", "to": "sb_1", "output": 1 },
+    { "id": "b_b2", "from": "sb_1",  "to": "sb_2" },
+    { "id": "b_b3", "from": "sb_2",  "to": "bay_blue" }
+  ]
+}
