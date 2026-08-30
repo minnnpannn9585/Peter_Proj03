@@ -50,6 +50,23 @@ namespace ParcelSort
 
             string json = File.ReadAllText(path);
             LevelConfig config = LevelConfigParser.Parse(json);
+
+            // Validate the plain config before a single GameObject exists. Aborting here means a
+            // bad level file never leaves a half built yard behind, and the same rules can be run
+            // from a test without an engine.
+            LevelTopologyCheck.Report report = LevelTopologyCheck.Validate(config);
+            if (!report.Ok)
+            {
+                for (int i = 0; i < report.errors.Count; i++)
+                {
+                    Debug.LogError("Level '" + config.id + "': " + report.errors[i]);
+                }
+
+                Debug.LogError("Level '" + config.id + "' failed validation with " +
+                               report.errors.Count + " error(s); load aborted.");
+                return false;
+            }
+
             LoadedConfig = config;
 
             // Must land before any geometry is built: ride height and every instanced

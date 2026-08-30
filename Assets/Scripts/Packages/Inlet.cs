@@ -65,7 +65,13 @@ namespace ParcelSort
         /// Drops one parcel of the requested colour. Returns false when the belt is full,
         /// which lets the scheduler retry next frame instead of losing the parcel.
         /// </summary>
-        public bool TryEmit(DestinationColor color)
+        /// <param name="color">Destination bay colour.</param>
+        /// <param name="blind">
+        /// True spawns the parcel unrevealed, so the player cannot read its destination until a
+        /// <see cref="ScannerDevice"/> reveals it. Defaults to false so existing callers are
+        /// unaffected.
+        /// </param>
+        public bool TryEmit(DestinationColor color, bool blind = false)
         {
             if (!active || parcelPrefab == null || traffic == null || node == null)
             {
@@ -86,7 +92,7 @@ namespace ParcelSort
                 parcel.Initialize(new ParcelData
                 {
                     destination = color,
-                    isRevealed = true,
+                    isRevealed = !blind,
                     size = ParcelSize.Small
                 });
             }

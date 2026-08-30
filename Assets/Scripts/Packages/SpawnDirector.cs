@@ -4,59 +4,44 @@ using UnityEngine;
 namespace ParcelSort
 {
     /// <summary>
-    /// Runs a level's authored spawn plan. Waves are resolved into concrete bursts the
-    /// moment the round starts, so the total parcel count is known up front and the
-    /// schedule is reproducible from the level seed.
+    /// Thin host around <see cref="SpawnSchedule"/>. All the scheduling logic and every random
+    /// roll now live in that plain class so a round can be replayed without an engine; this
+    /// component's only jobs are to find the inlets, pump the schedule, and turn each request
+    /// into an actual parcel.
     /// </summary>
     public class SpawnDirector : MonoBehaviour
     {
-        /// <summary>One resolved run of same-colour parcels out of one inlet.</summary>
-        class Burst
-        {
-            public Inlet inlet;
-            public DestinationColor color;
-            public int total;
-            public int emitted;
-            public float spacing;
-            public float timer;
+        /// <summary>Guard against a pathological schedule monopolising a frame.</summary>
+        const int MaxEmitsPerTick = 64;
 
-            public bool Done => emitted >= total;
-        }
-
-        /// <summary>Bursts that run at the same time, followed by a rest.</summary>
-        class Group
-        {
-            public readonly List<Burst> bursts = new List<Burst>();
-            public float restAfter;
-        }
-
-        readonly List<Group> groups = new List<Group>();
-        readonly List<Inlet> inlets = new List<Inlet>();
+        readonly SpawnSchedule schedule = new SpawnSchedule();
         readonly Dictionary<string, Inlet> inletsById = new Dictionary<string, Inlet>();
-        readonly List<DestinationColor> fallbackColors = new List<DestinationColor>();
-        System.Random rng;
-        int groupIndex;
-        float leadIn;
-        float rest;
+        readonly List<string> inletIds = new List<string>();
+
         bool running;
 
-        /// <summary>Total parcels this level will release.</summary>
-        public int Planned { get; private set; }
+        /// <summary>Total parcels this round will release. Known during prep.</summary>
+        public int Planned => schedule.Planned;
 
         /// <summary>Parcels already released onto a belt.</summary>
-        public int Emitted { get; private set; }
+        public int Emitted => schedule.Emitted;
 
         /// <summary>Parcels still waiting in the schedule.</summary>
-        public int Queued => Mathf.Max(0, Planned - Emitted);
+        public int Queued => schedule.Queued;
 
-        /// <summary>True once the last group has released everything it owed.</summary>
-        public bool Finished => groupIndex >= groups.Count;
+        /// <summary>True once the schedule has released everything it owed.</summary>
+        public bool Finished => schedule.Finished;
+
+        /// <summary>Blind parcels in the resolved plan, fixed by the seed.</summary>
+        public int PlannedBlind => schedule.PlannedBlind;
+
+        public SpawnSchedule Schedule => schedule;
 
         /// <summary>
-        /// Resolves the plan against a freshly loaded yard. Call once per level load so the
-        /// prep HUD can already show the parcel total.
+        /// Resolves a plan against a freshly loaded yard. Called during prep so the HUD can show
+        /// the parcel total before the round starts.
         /// </summary>
-        public void Build(YardGraph graph, SpawnPlan plan)
+        public void Build(YardGraph graph, SpawnPlan plan, MissionModifiers modifiers)
         {
             Clear();
             if (graph == null)
@@ -65,45 +50,38 @@ namespace ParcelSort
             }
 
             CollectInlets(graph);
-            if (inlets.Count == 0)
+            if (inletIds.Count == 0)
             {
                 return;
             }
 
             SpawnPlan effective = plan != null && plan.HasWaves ? plan : BuildFallbackPlan();
-            int seed = effective.hasSeed ? effective.seed : Random.Range(int.MinValue, int.MaxValue);
-            rng = new System.Random(seed);
-            leadIn = Mathf.Max(0f, effective.startDelay.NextFloat(rng));
-            BuildGroups(effective);
+            int seed = effective.hasSeed
+                ? effective.seed
+                : Random.Range(int.MinValue, int.MaxValue);
 
-            Planned = 0;
-            for (int g = 0; g < groups.Count; g++)
-            {
-                List<Burst> bursts = groups[g].bursts;
-                for (int b = 0; b < bursts.Count; b++)
-                {
-                    Planned += bursts[b].total;
-                }
-            }
+            var bayColors = new List<DestinationColor>(graph.BayColors());
+            schedule.Build(inletIds, bayColors, effective, modifiers, seed);
         }
 
-        void Update()
+        /// <summary>Legacy overload used by levels that carry a top-level spawn block.</summary>
+        public void Build(YardGraph graph, SpawnPlan plan)
         {
-            Tick(Time.deltaTime);
+            Build(graph, plan, null);
+        }
+
+        /// <summary>Replays the resolved plan from the start, for a retry.</summary>
+        public void Rewind()
+        {
+            schedule.Rewind();
         }
 
         public void Clear()
         {
-            groups.Clear();
-            inlets.Clear();
+            schedule.Clear();
             inletsById.Clear();
-            fallbackColors.Clear();
-            groupIndex = 0;
-            leadIn = 0f;
-            rest = 0f;
+            inletIds.Clear();
             running = false;
-            Planned = 0;
-            Emitted = 0;
         }
 
         public void SetRunning(bool value)
@@ -122,14 +100,8 @@ namespace ParcelSort
                     continue;
                 }
 
-                inlets.Add(inlet);
                 inletsById[nodes[i].NodeId] = inlet;
-            }
-
-            fallbackColors.AddRange(graph.BayColors());
-            if (fallbackColors.Count == 0)
-            {
-                fallbackColors.Add(DestinationColor.Red);
+                inletIds.Add(nodes[i].NodeId);
             }
         }
 
@@ -140,7 +112,7 @@ namespace ParcelSort
         SpawnPlan BuildFallbackPlan()
         {
             var plan = new SpawnPlan { repeat = 4 };
-            for (int i = 0; i < inlets.Count; i++)
+            for (int i = 0; i < inletIds.Count; i++)
             {
                 plan.waves.Add(new SpawnWaveDef());
             }
@@ -148,134 +120,9 @@ namespace ParcelSort
             return plan;
         }
 
-        void BuildGroups(SpawnPlan plan)
+        void Update()
         {
-            for (int pass = 0; pass < plan.repeat; pass++)
-            {
-                for (int w = 0; w < plan.waves.Count; w++)
-                {
-                    SpawnWaveDef wave = plan.waves[w];
-                    Group joinTarget = wave.parallel && groups.Count > 0 ? groups[groups.Count - 1] : null;
-                    Burst burst = ResolveBurst(wave, joinTarget);
-                    if (burst == null)
-                    {
-                        continue;
-                    }
-
-                    float restAfter = Mathf.Max(0f, wave.delayAfter.NextFloat(rng));
-                    if (joinTarget != null)
-                    {
-                        joinTarget.bursts.Add(burst);
-                        joinTarget.restAfter = Mathf.Max(joinTarget.restAfter, restAfter);
-                        continue;
-                    }
-
-                    var group = new Group { restAfter = restAfter };
-                    group.bursts.Add(burst);
-                    groups.Add(group);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Turns one authored wave into a concrete burst. <paramref name="joinTarget"/> is the
-        /// group this burst will share, so a random pick avoids an inlet already busy there.
-        /// </summary>
-        Burst ResolveBurst(SpawnWaveDef wave, Group joinTarget)
-        {
-            Inlet inlet = PickInlet(wave, joinTarget);
-            if (inlet == null)
-            {
-                return null;
-            }
-
-            int count = Mathf.Max(0, wave.count.NextInt(rng));
-            if (count == 0)
-            {
-                return null;
-            }
-
-            return new Burst
-            {
-                inlet = inlet,
-                color = PickColor(wave),
-                total = count,
-                spacing = Mathf.Max(0f, wave.spacing.NextFloat(rng))
-            };
-        }
-
-        Inlet PickInlet(SpawnWaveDef wave, Group joinTarget)
-        {
-            var candidates = new List<Inlet>();
-            if (wave.inlets.Count > 0)
-            {
-                for (int i = 0; i < wave.inlets.Count; i++)
-                {
-                    if (inletsById.TryGetValue(wave.inlets[i], out Inlet named))
-                    {
-                        candidates.Add(named);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("Spawn plan names unknown inlet '" + wave.inlets[i] + "'.");
-                    }
-                }
-            }
-            else
-            {
-                candidates.AddRange(inlets);
-            }
-
-            if (candidates.Count == 0)
-            {
-                return null;
-            }
-
-            if (joinTarget != null && candidates.Count > 1)
-            {
-                for (int i = candidates.Count - 1; i >= 0; i--)
-                {
-                    if (UsesInlet(joinTarget, candidates[i]))
-                    {
-                        candidates.RemoveAt(i);
-                    }
-                }
-
-                if (candidates.Count == 0)
-                {
-                    return null;
-                }
-            }
-
-            return candidates[rng.Next(candidates.Count)];
-        }
-
-        DestinationColor PickColor(SpawnWaveDef wave)
-        {
-            if (wave.colors.Count == 1)
-            {
-                return wave.colors[0];
-            }
-
-            if (wave.colors.Count > 1)
-            {
-                return wave.colors[rng.Next(wave.colors.Count)];
-            }
-
-            return fallbackColors[rng.Next(fallbackColors.Count)];
-        }
-
-        static bool UsesInlet(Group group, Inlet inlet)
-        {
-            for (int i = 0; i < group.bursts.Count; i++)
-            {
-                if (group.bursts[i].inlet == inlet)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            Tick(Time.deltaTime);
         }
 
         /// <summary>Advances the schedule. Public so it can be stepped deterministically.</summary>
@@ -286,66 +133,34 @@ namespace ParcelSort
                 return;
             }
 
-            if (leadIn > 0f)
+            float step = dt;
+            int emits = 0;
+            while (emits < MaxEmitsPerTick && schedule.TryDequeue(step, out SpawnRequest request))
             {
-                leadIn -= dt;
-                return;
-            }
+                // Only the first call in a tick advances the clock; the rest drain whatever else
+                // fell due on the same tick.
+                step = 0f;
+                emits++;
 
-            if (rest > 0f)
-            {
-                rest -= dt;
-                return;
-            }
-
-            if (groupIndex >= groups.Count)
-            {
-                running = false;
-                return;
-            }
-
-            Group group = groups[groupIndex];
-            if (StepGroup(group, dt))
-            {
-                rest = group.restAfter;
-                groupIndex++;
-            }
-        }
-
-        /// <summary>Returns true once every burst in the group has released all its parcels.</summary>
-        bool StepGroup(Group group, float dt)
-        {
-            bool done = true;
-            for (int i = 0; i < group.bursts.Count; i++)
-            {
-                Burst burst = group.bursts[i];
-                if (burst.Done)
+                if (!inletsById.TryGetValue(request.inletId, out Inlet inlet) || inlet == null)
                 {
+                    // The inlet vanished with the yard. Consuming the request keeps the schedule
+                    // from spinning on something that can never be emitted.
+                    schedule.ConfirmEmit();
                     continue;
                 }
 
-                done = false;
-                if (burst.timer > 0f)
+                if (inlet.TryEmit(request.color, request.blind))
                 {
-                    burst.timer -= dt;
-                    continue;
+                    schedule.ConfirmEmit();
                 }
-
-                if (burst.inlet == null)
+                else
                 {
-                    burst.emitted = burst.total;
-                    continue;
-                }
-
-                if (burst.inlet.TryEmit(burst.color))
-                {
-                    burst.emitted++;
-                    Emitted++;
-                    burst.timer = burst.spacing;
+                    // Belt is full. Defer rather than drop, and stop asking this tick.
+                    schedule.RejectEmit();
+                    break;
                 }
             }
-
-            return done;
         }
     }
 }
