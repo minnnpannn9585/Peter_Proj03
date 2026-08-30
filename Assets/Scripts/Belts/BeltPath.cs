@@ -14,7 +14,12 @@ namespace ParcelSort
         public const float BaseDeckTop = 0.30f;
 
         public const float BaseDeckThickness = 0.22f;
-        public const float BaseDeckWidth = 0.62f;
+
+        /// <summary>
+        /// Forwards to <see cref="BeltSlotMath.BaseDeckWidth"/>. The value lives there so slot
+        /// arithmetic can be verified without an engine; this alias keeps existing callers working.
+        /// </summary>
+        public const float BaseDeckWidth = BeltSlotMath.BaseDeckWidth;
 
         /// <summary>Authored half height of a parcel cube (Parcel.prefab is a 0.42 cube).</summary>
         public const float BaseParcelHalf = 0.21f;
@@ -51,9 +56,31 @@ namespace ParcelSort
         /// <summary>Belt speed with no player modifier applied, in world units per second.</summary>
         public float BaseSpeed { get; private set; } = 5f;
 
+        /// <summary>
+        /// Per-mission tempo, folded into <see cref="BaseSpeed"/> rather than added as a third
+        /// multiplier, so <see cref="EffectiveSpeed"/> stays exactly base x player x device.
+        /// </summary>
+        public float MissionSpeedScale { get; private set; } = 1f;
+
+        float authoredSpeed = 1f;
+        float rulesBaseSpeed = 5f;
+
+        /// <summary>
+        /// The player's own switches. <see cref="BeltPauseSwitch"/> and <see cref="BeltSpeedToggle"/>
+        /// overwrite this outright, so nothing else may write to it: a device that did would have
+        /// its effect erased the next time the player hit pause.
+        /// </summary>
         public float SpeedMultiplier { get; set; } = 1f;
 
-        public float EffectiveSpeed => Mathf.Max(0f, BaseSpeed * SpeedMultiplier);
+        /// <summary>
+        /// Installed devices only. Kept separate from <see cref="SpeedMultiplier"/> so a Booster's
+        /// bonus survives "pause then resume" instead of being clobbered by the switch.
+        /// At most one Booster per belt, which is why this is a single value and not a product.
+        /// </summary>
+        public float DeviceSpeedBonus { get; set; } = 1f;
+
+        /// <summary>The two independent channels, multiplied together at the point of use.</summary>
+        public float EffectiveSpeed => Mathf.Max(0f, BaseSpeed * SpeedMultiplier * DeviceSpeedBonus);
 
         /// <summary>Polyline at parcel centre height, first point on From, last point on To.</summary>
         public Vector3[] Points { get; private set; } = System.Array.Empty<Vector3>();
@@ -69,6 +96,9 @@ namespace ParcelSort
 
         /// <summary>Installed gates sorted by ascending distance.</summary>
         public readonly List<GateDevice> Gates = new List<GateDevice>();
+
+        /// <summary>Installed scanners sorted by ascending distance.</summary>
+        public readonly List<ScannerDevice> Scanners = new List<ScannerDevice>();
 
         public Renderer[] DeckRenderers { get; set; } = System.Array.Empty<Renderer>();
 
@@ -89,8 +119,12 @@ namespace ParcelSort
             CanSpeed = def.canSpeed;
             GridSize = grid.size;
             LevelHeight = grid.levelHeight;
-            BaseSpeed = Mathf.Max(0.1f, rules.baseSpeed * def.speed);
+            authoredSpeed = def.speed;
+            rulesBaseSpeed = rules.baseSpeed;
+            MissionSpeedScale = 1f;
+            BaseSpeed = Mathf.Max(0.1f, rulesBaseSpeed * authoredSpeed);
             SpeedMultiplier = 1f;
+            DeviceSpeedBonus = 1f;
             gameObject.name = def.id;
 
             BuildPolyline(def, from, to, grid);
@@ -150,22 +184,19 @@ namespace ParcelSort
 
         void BuildSlots()
         {
+            // Delegated to BeltSlotMath so a level file's slot budget can be counted offline
+            // using this exact arithmetic rather than a copy of it.
             var distances = new List<float>();
-            float margin = GridSize * 0.6f;
-
-            // Slots are spaced wider than a cell so the enlarged markers read as separate
-            // drop targets instead of one continuous ribbon over the deck.
-            float spacing = Mathf.Max(GridSize, DeckWidth * 2.2f);
-            if (AllowInstall && Length > margin * 2f)
-            {
-                for (float d = margin; d <= Length - margin + 0.001f; d += spacing)
-                {
-                    distances.Add(d);
-                }
-            }
-
+            BeltSlotMath.Fill(distances, Length, GridSize, DeckWidth, AllowInstall);
             slotDistances = distances.ToArray();
             slotOccupied = new bool[slotDistances.Length];
+        }
+
+        /// <summary>Applies the selected mission's tempo. 1 restores the level's authored speed.</summary>
+        public void SetMissionSpeedScale(float scale)
+        {
+            MissionSpeedScale = Mathf.Max(0.05f, scale);
+            BaseSpeed = Mathf.Max(0.1f, rulesBaseSpeed * authoredSpeed * MissionSpeedScale);
         }
 
         public float GetSlotDistance(int index)
@@ -266,6 +297,12 @@ namespace ParcelSort
         public void SortGates()
         {
             Gates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+        }
+
+        /// <summary>Keeps scanners in travel order so an upstream one reveals a parcel first.</summary>
+        public void SortScanners()
+        {
+            Scanners.Sort((a, b) => a.Distance.CompareTo(b.Distance));
         }
 
         /// <summary>Distance of the last (rear-most) parcel on the belt, or -1 when empty.</summary>

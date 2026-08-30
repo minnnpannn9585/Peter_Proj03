@@ -10,8 +10,34 @@ namespace ParcelSort
     {
         public BeltPath Belt { get; set; }
         public float Distance { get; set; }
+
+        /// <summary>Seconds spent stalled for a reason that counts as congestion.</summary>
         public float StallTime { get; set; }
+
         public bool JamCounted { get; set; }
+
+        /// <summary>
+        /// Seconds spent held by a closed gate. Tracked separately from <see cref="StallTime"/>
+        /// because a gate is the player deliberately queueing parcels, not the yard seizing up,
+        /// and a gate's hold (8s) is longer than the jam threshold (3s).
+        /// </summary>
+        public float GateWaitTime { get; set; }
+
+        /// <summary>
+        /// True when this parcel is only stopped because the parcel ahead is gate-held. The flag
+        /// propagates back along the queue so the whole tailback behind a gate is exempt from the
+        /// jam counter, not just the parcel touching the barrier.
+        /// </summary>
+        public bool UpstreamGateHeld { get; set; }
+
+        /// <summary>Clears every congestion signal, for a fresh belt entry.</summary>
+        public void ResetFlow()
+        {
+            StallTime = 0f;
+            JamCounted = false;
+            GateWaitTime = 0f;
+            UpstreamGateHeld = false;
+        }
 
         Parcel parcel;
 

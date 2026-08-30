@@ -92,22 +92,41 @@ namespace ParcelSort
 
         void Update()
         {
-            if (IsClosed)
+            Advance(Time.deltaTime);
+            Billboard();
+        }
+
+        /// <summary>
+        /// Advances the hold timer and opens the gate when it expires. Public and separate from
+        /// Update so a test can drive the 8 second hold at a fixed timestep, which is what the
+        /// "a closed gate must not count as a jam" regression needs.
+        /// </summary>
+        public void Advance(float dt)
+        {
+            if (!IsClosed || dt <= 0f)
             {
-                closedTime += Time.deltaTime;
-                if (closedTime >= holdSeconds)
-                {
-                    IsClosed = false;
-                    closedTime = 0f;
-                    Refresh();
-                }
-                else if (countdownFill != null)
-                {
-                    countdownFill.fillAmount = Mathf.Clamp01(1f - closedTime / holdSeconds);
-                }
+                return;
             }
 
-            Billboard();
+            closedTime += dt;
+            if (closedTime >= holdSeconds)
+            {
+                IsClosed = false;
+                closedTime = 0f;
+                Refresh();
+                return;
+            }
+
+            if (countdownFill != null)
+            {
+                countdownFill.fillAmount = Mathf.Clamp01(1f - closedTime / holdSeconds);
+            }
+        }
+
+        /// <summary>Closes the gate. Same effect as a player click, without needing a raycast.</summary>
+        public void Close()
+        {
+            OnYardClick();
         }
 
         void Billboard()
