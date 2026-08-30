@@ -198,6 +198,121 @@ namespace ParcelSort.Tests
             Assert.AreEqual(1, diverter.AutoArm.Routing[DestinationColor.Blue]);
         }
 
+        // ------------------------------------------------------------------ moving a placement
+
+        [Test]
+        public void MovingAnInstalledGateToAnotherSlotCostsNoStock()
+        {
+            Assert.Greater(beltA.SlotCount, 1, "this test needs two slots on one belt");
+            int last = beltA.SlotCount - 1;
+
+            Assert.IsTrue(installer.TryInstall(DeviceType.Gate, MarkerFor(beltA, 0)));
+            Assert.IsTrue(installer.TryMove(MarkerFor(beltA, 0), MarkerFor(beltA, last)));
+
+            Assert.IsFalse(beltA.IsSlotOccupied(0), "the slot it left is free again");
+            Assert.IsTrue(beltA.IsSlotOccupied(last));
+            Assert.AreEqual(1, beltA.Gates.Count, "the gate is registered exactly once");
+            Assert.AreEqual(beltA.GetSlotDistance(last), beltA.Gates[0].Distance, 1e-4f,
+                "and it now stops parcels at its new position");
+
+            Assert.AreEqual(1, installer.InstalledCount);
+            Assert.AreEqual(1, inventory.Installed(DeviceType.Gate), "a move is not a re-buy");
+            Assert.AreEqual(3, inventory.Free(DeviceType.Gate));
+
+            List<InstallRecord> snapshot = installer.Snapshot();
+            Assert.AreEqual(1, snapshot.Count);
+            Assert.AreEqual(last, snapshot[0].slotIndex, "the save follows the device");
+        }
+
+        [Test]
+        public void MovingOntoAnOccupiedSlotIsRefusedAndChangesNothing()
+        {
+            Assert.Greater(beltA.SlotCount, 1);
+
+            Assert.IsTrue(installer.TryInstall(DeviceType.Gate, MarkerFor(beltA, 0)));
+            Assert.IsTrue(installer.TryInstall(DeviceType.Scanner, MarkerFor(beltA, 1)));
+
+            Assert.IsFalse(installer.TryMove(MarkerFor(beltA, 0), MarkerFor(beltA, 1)),
+                "a slot still holds at most one device");
+
+            Assert.IsTrue(beltA.IsSlotOccupied(0), "the gate stayed where it was");
+            Assert.IsTrue(beltA.IsSlotOccupied(1));
+            Assert.AreEqual(1, beltA.Gates.Count);
+            Assert.AreEqual(1, beltA.Scanners.Count);
+            Assert.AreEqual(2, installer.InstalledCount);
+        }
+
+        [Test]
+        public void ABoosterCanSlideAlongItsOwnBeltWithoutStackingTheBonus()
+        {
+            Assert.Greater(beltA.SlotCount, 1);
+            int last = beltA.SlotCount - 1;
+
+            Assert.IsTrue(installer.TryInstall(DeviceType.Booster, MarkerFor(beltA, 0)));
+            Assert.IsTrue(installer.TryMove(MarkerFor(beltA, 0), MarkerFor(beltA, last)),
+                "the belt's own booster must not block itself");
+
+            Assert.AreEqual(1.6f, beltA.DeviceSpeedBonus, 1e-4f, "still exactly one boost");
+            Assert.IsFalse(beltA.IsSlotOccupied(0));
+            Assert.IsTrue(beltA.IsSlotOccupied(last));
+        }
+
+        [Test]
+        public void MovingABoosterOntoABeltThatAlreadyHasOneIsRefusedAndRollsBack()
+        {
+            Assert.Greater(beltB.SlotCount, 1);
+
+            Assert.IsTrue(installer.TryInstall(DeviceType.Booster, MarkerFor(beltA, 0)));
+            Assert.IsTrue(installer.TryInstall(DeviceType.Booster, MarkerFor(beltB, 0)));
+
+            Assert.IsFalse(installer.TryMove(MarkerFor(beltA, 0), MarkerFor(beltB, 1)),
+                "boosters still must not stack on one belt");
+
+            Assert.IsTrue(beltA.IsSlotOccupied(0), "the refused move put it straight back");
+            Assert.AreEqual(1.6f, beltA.DeviceSpeedBonus, 1e-4f,
+                "and the belt it came from kept its boost");
+            Assert.IsFalse(beltB.IsSlotOccupied(1));
+            Assert.AreEqual(1.6f, beltB.DeviceSpeedBonus, 1e-4f);
+            Assert.AreEqual(2, installer.InstalledCount);
+        }
+
+        [Test]
+        public void MovingAnAutoArmToAnotherDiverterReleasesTheFirstLever()
+        {
+            YardNode hub2 = yard.AddNode("hub2", NodeType.Junction, 8, 18);
+            YardNode bayGreen = yard.AddNode("bay_green2", NodeType.Bay, 14, 18, DestinationColor.Green);
+            YardNode bayBlue = yard.AddNode("bay_blue2", NodeType.Bay, 14, 22, DestinationColor.Blue);
+            yard.AddBelt("b_hub2_green", hub2, bayGreen, 0);
+            yard.AddBelt("b_hub2_blue", hub2, bayBlue, 1);
+            bayGreen.gameObject.AddComponent<TruckBay>().Configure(DestinationColor.Green, null);
+            bayBlue.gameObject.AddComponent<TruckBay>().Configure(DestinationColor.Blue, null);
+            installer.RefreshMarkers();
+
+            Assert.IsTrue(installer.TryInstall(DeviceType.AutoArm, NodeSlotFor(diverter)));
+            Assert.IsTrue(installer.TryMove(NodeSlotFor(diverter), NodeSlotFor(hub2)));
+
+            Assert.IsNull(diverter.AutoArm, "the first diverter is hand-operated again");
+            Assert.IsNotNull(hub2.AutoArm, "and the second one is automated");
+            Assert.IsTrue(NodeSlotFor(diverter).IsFree, "its drop target reads free again");
+            Assert.IsFalse(NodeSlotFor(hub2).IsFree);
+
+            Assert.AreEqual(1, inventory.Installed(DeviceType.AutoArm), "a move is not a re-buy");
+            Assert.AreEqual("hub2", installer.Snapshot()[0].nodeId);
+        }
+
+        [Test]
+        public void MovingIsRefusedOutsidePrep()
+        {
+            Assert.Greater(beltA.SlotCount, 1);
+            Assert.IsTrue(installer.TryInstall(DeviceType.Gate, MarkerFor(beltA, 0)));
+
+            installer.SetPhaseSource(() => GamePhase.Running);
+            Assert.IsFalse(installer.TryMove(MarkerFor(beltA, 0), MarkerFor(beltA, 1)),
+                "the yard cannot be rearranged once the parcels are flowing");
+            Assert.IsTrue(beltA.IsSlotOccupied(0));
+            Assert.IsFalse(beltA.IsSlotOccupied(1));
+        }
+
         // ------------------------------------------------------------------ refusals
 
         [Test]

@@ -11,8 +11,9 @@ namespace ParcelSort
         /// <summary>Misrouted parcels tolerated. Exceeding this loses immediately.</summary>
         public int maxWrong;
 
-        /// <summary>Jams tolerated. -1 means jams never lose the round.</summary>
-        public int maxJams = -1;
+        // There is deliberately no jam budget. Congestion is measured and shown, but it never
+        // ends a round: a jam already punishes the player through the clock, and capping it on
+        // top of that turned a slow lane into an instant loss the player could not read.
 
         public float timeLimitSeconds;
     }

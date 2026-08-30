@@ -99,7 +99,11 @@ namespace ParcelSort
             DestinationPalette.Apply(bodyRenderer, IdleColor);
         }
 
-        void OnDestroy()
+        /// <summary>
+        /// Detaches from the belt without destroying the object, so the same scanner can be moved
+        /// further upstream. Idempotent, and shared with <see cref="OnDestroy"/>.
+        /// </summary>
+        public void Uninstall()
         {
             if (Belt == null)
             {
@@ -108,6 +112,13 @@ namespace ParcelSort
 
             Belt.Scanners.Remove(this);
             Belt.SetSlotOccupied(SlotIndex, false);
+            Belt = null;
+            SlotIndex = -1;
+        }
+
+        void OnDestroy()
+        {
+            Uninstall();
         }
     }
 }

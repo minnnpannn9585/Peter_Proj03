@@ -116,8 +116,6 @@ namespace ParcelSort.Tests
 
             Assert.GreaterOrEqual(m1.rewards.baseCoins * 2, gate.price,
                 "two M1 replays must always pay for the cheapest meaningful upgrade");
-            Assert.AreEqual(-1, m1.objective.maxJams,
-                "M1 must not punish a beginner with the jam mechanic");
         }
 
         [Test]

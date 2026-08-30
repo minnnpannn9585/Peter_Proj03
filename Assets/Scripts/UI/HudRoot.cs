@@ -25,6 +25,7 @@ namespace ParcelSort
         DeviceShopBar shopBar;
         StartButtonUI startButton;
         ResultPanel resultPanel;
+        RunControlPanel runControls;
 
         YardDirector director;
         bool built;
@@ -35,6 +36,7 @@ namespace ParcelSort
         public DeviceShopBar ShopBar => shopBar;
         public StartButtonUI StartButton => startButton;
         public ResultPanel Result => resultPanel;
+        public RunControlPanel RunControls => runControls;
 
         void Awake()
         {
@@ -71,6 +73,7 @@ namespace ParcelSort
             missionList = Create<MissionListPanel>("MissionList", parent);
             shopBar = Create<DeviceShopBar>("DeviceShop", parent);
             startButton = Create<StartButtonUI>("Start", parent);
+            runControls = Create<RunControlPanel>("RunControls", parent);
             resultPanel = Create<ResultPanel>("Result", parent);
 
             ResolveLegacyPanels(parent);
@@ -171,6 +174,7 @@ namespace ParcelSort
             missionList?.Bind(director);
             shopBar?.Bind(director);
             startButton?.Bind(director);
+            runControls?.Bind(director);
             resultPanel?.Bind(director);
         }
 
@@ -197,14 +201,16 @@ namespace ParcelSort
             shopBar?.Refresh();
             startButton?.Refresh();
             progressBar?.Refresh();
+            runControls?.Refresh();
             resultPanel?.Refresh();
         }
 
         /// <summary>
         /// The whole visibility contract, in one place.
         ///
-        /// Prep     mission list + shop + START, no progress bar, no result panel.
-        /// Running  progress bar only; every prep panel is switched off so the yard is unobscured.
+        /// Prep     mission list + shop + START, no progress bar, no run controls, no result.
+        /// Running  progress bar and the pause/exit controls; every prep panel is switched off so
+        ///          the yard is unobscured.
         /// Result   the running layout with the result panel layered on top.
         ///
         /// The name and coin panel is visible throughout. Nothing here disables yard interaction,
@@ -223,6 +229,7 @@ namespace ParcelSort
             HudFactory.SetActive(shopBar?.Panel, prep);
             HudFactory.SetActive(startButton?.Panel, prep);
             HudFactory.SetActive(progressBar?.Panel, roundVisible);
+            HudFactory.SetActive(runControls?.Panel, roundVisible);
             HudFactory.SetActive(resultPanel?.Panel, result);
 
             // The GM shortcuts swap levels, which only makes sense before a round begins.

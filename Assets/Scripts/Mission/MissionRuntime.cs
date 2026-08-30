@@ -150,12 +150,8 @@ namespace ParcelSort
                 return State;
             }
 
-            if (objective.maxJams >= 0 && Jams > objective.maxJams)
-            {
-                State = MissionState.Lost;
-                FailReason = MissionFailReason.TooManyJams;
-                return State;
-            }
+            // Jams are counted for the read-out and nothing else. There is no jam budget: a
+            // blockage already costs the player time, which the clock below judges on its own.
 
             if (Correct >= objective.targetDelivered && objective.targetDelivered > 0)
             {

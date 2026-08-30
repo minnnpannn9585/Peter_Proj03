@@ -60,7 +60,11 @@ namespace ParcelSort
             DestinationPalette.Apply(bodyRenderer, ActiveColor);
         }
 
-        void OnDestroy()
+        /// <summary>
+        /// Detaches from the belt without destroying the object, so the same Booster can be moved
+        /// to another slot. Idempotent, and shared with <see cref="OnDestroy"/>.
+        /// </summary>
+        public void Uninstall()
         {
             if (Belt == null)
             {
@@ -71,6 +75,13 @@ namespace ParcelSort
             // Booster keep working forever.
             Belt.DeviceSpeedBonus = 1f;
             Belt.SetSlotOccupied(SlotIndex, false);
+            Belt = null;
+            SlotIndex = -1;
+        }
+
+        void OnDestroy()
+        {
+            Uninstall();
         }
     }
 }

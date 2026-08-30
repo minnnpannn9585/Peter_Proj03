@@ -30,7 +30,13 @@ namespace ParcelSort
 
             builder.Clear();
             builder.Append(director.LevelDisplayName)
-                .Append("   [").Append(UiStrings.PhaseName(director.Phase)).Append("]\n");
+                .Append("   [").Append(UiStrings.PhaseName(director.Phase)).Append(']');
+            if (director.IsPaused)
+            {
+                builder.Append("  ").Append(UiStrings.Paused);
+            }
+
+            builder.Append('\n');
 
             MissionDef selected = director.SelectedMission;
             if (selected != null)

@@ -203,12 +203,35 @@ namespace ParcelSort
             DestinationPalette.Apply(bodyRenderer, ActiveColor);
         }
 
-        void OnDestroy()
+        /// <summary>
+        /// Releases the node's lever without destroying the object, so the same arm can be moved
+        /// to a different diverter. Idempotent, and shared with <see cref="OnDestroy"/>.
+        /// </summary>
+        public void Uninstall()
         {
-            if (Node != null && Node.AutoArm == this)
+            if (Node == null)
+            {
+                return;
+            }
+
+            if (Node.AutoArm == this)
             {
                 Node.AutoArm = null;
             }
+
+            // The prep-phase drop target has to read as free again straight away.
+            if (Node.DeviceSlot != null)
+            {
+                Node.DeviceSlot.SetOccupied(false);
+            }
+
+            Node = null;
+            routing.Clear();
+        }
+
+        void OnDestroy()
+        {
+            Uninstall();
         }
     }
 }

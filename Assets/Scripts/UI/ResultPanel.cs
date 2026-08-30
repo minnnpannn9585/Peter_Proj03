@@ -122,8 +122,6 @@ namespace ParcelSort
             {
                 case MissionFailReason.TooManyWrong:
                     return "错分包裹超出上限";
-                case MissionFailReason.TooManyJams:
-                    return "堵塞次数超出上限";
                 case MissionFailReason.Timeout:
                     return "时间耗尽";
                 case MissionFailReason.None:

@@ -106,6 +106,19 @@ namespace ParcelSort
 
         public static readonly Vector2 ShopCardSize = new Vector2(172f, 148f);
 
+        // Bottom left: pause / exit. Running and Result only, so it never fights the shop bar,
+        // which owns this corner during prep. The two are never on screen at the same time.
+        public static readonly RectSpec RunControlPanel =
+            RectSpec.Corner(BottomLeft, new Vector2(24f, 24f), new Vector2(368f, 84f));
+
+        public static readonly RectSpec PauseButton =
+            new RectSpec(BottomLeft, new Vector2(0.5f, 0f), BottomLeft,
+                new Vector2(12f, 12f), new Vector2(-18f, 60f));
+
+        public static readonly RectSpec ExitButton =
+            new RectSpec(new Vector2(0.5f, 0f), new Vector2(1f, 0f), BottomLeft,
+                new Vector2(6f, 12f), new Vector2(-18f, 60f));
+
         // Bottom right: START. Prep only.
         public static readonly RectSpec StartButton =
             RectSpec.Corner(BottomRight, new Vector2(-24f, 24f), new Vector2(320f, 116f));

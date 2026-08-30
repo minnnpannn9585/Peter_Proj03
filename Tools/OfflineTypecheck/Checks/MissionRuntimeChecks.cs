@@ -5,7 +5,7 @@ namespace ParcelSort.Offline
     /// <summary>Properties 6, 7 and 14: settle consistency, monotonic progress, one-off bonus.</summary>
     public static class MissionRuntimeChecks
     {
-        static MissionDef Def(int target, int maxWrong, int maxJams, float limit,
+        static MissionDef Def(int target, int maxWrong, float limit,
             int baseCoins = 30, int firstClear = 30)
         {
             return new MissionDef
@@ -16,7 +16,6 @@ namespace ParcelSort.Offline
                 {
                     targetDelivered = target,
                     maxWrong = maxWrong,
-                    maxJams = maxJams,
                     timeLimitSeconds = limit
                 },
                 rewards = new MissionRewards { baseCoins = baseCoins, firstClearCoins = firstClear }
@@ -28,7 +27,7 @@ namespace ParcelSort.Offline
             r.Section("MissionRuntime (Properties 6, 7, 14)");
 
             // Win
-            var win = new MissionRuntime(Def(3, 2, -1, 100f), 10);
+            var win = new MissionRuntime(Def(3, 2, 100f), 10);
             win.Begin();
             win.ReportCorrect();
             win.ReportCorrect();
@@ -36,7 +35,7 @@ namespace ParcelSort.Offline
             r.Check(win.State == MissionState.Won, "hitting the target wins");
 
             // Too many wrong
-            var wrong = new MissionRuntime(Def(10, 2, -1, 100f), 20);
+            var wrong = new MissionRuntime(Def(10, 2, 100f), 20);
             wrong.Begin();
             wrong.ReportWrong();
             wrong.ReportWrong();
@@ -45,27 +44,26 @@ namespace ParcelSort.Offline
             r.Check(wrong.State == MissionState.Lost && wrong.FailReason == MissionFailReason.TooManyWrong,
                 "exceeding maxWrong loses with TooManyWrong");
 
-            // Jams, capped
-            var jam = new MissionRuntime(Def(10, 5, 1, 100f), 20);
+            // Jams: counted, never fatal. There is no jam budget any more.
+            var jam = new MissionRuntime(Def(10, 5, 100f), 20);
             jam.Begin();
-            jam.ReportJam();
-            r.Check(jam.State == MissionState.Running, "a jam at the cap is still alive");
-            jam.ReportJam();
-            r.Check(jam.State == MissionState.Lost && jam.FailReason == MissionFailReason.TooManyJams,
-                "exceeding maxJams loses with TooManyJams");
-
-            // Jams, uncapped (-1)
-            var noJamCap = new MissionRuntime(Def(10, 5, -1, 100f), 20);
-            noJamCap.Begin();
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 500; i++)
             {
-                noJamCap.ReportJam();
+                jam.ReportJam();
             }
 
-            r.Check(noJamCap.State == MissionState.Running, "maxJams -1 never loses on jams");
+            r.Check(jam.State == MissionState.Running && jam.FailReason == MissionFailReason.None,
+                "jams never lose the round, however many there are");
+            r.AreEqual(500, jam.Jams, "jams are still counted for the read-out");
+            for (int i = 0; i < 10; i++)
+            {
+                jam.ReportCorrect();
+            }
+
+            r.Check(jam.State == MissionState.Won, "a jammed round can still be won");
 
             // Timeout
-            var timeout = new MissionRuntime(Def(10, 5, -1, 1f), 20);
+            var timeout = new MissionRuntime(Def(10, 5, 1f), 20);
             timeout.Begin();
             for (int i = 0; i < 120; i++)
             {
@@ -80,7 +78,7 @@ namespace ParcelSort.Offline
             int totalPaid = 0;
             for (int attempt = 0; attempt < 5; attempt++)
             {
-                var round = new MissionRuntime(Def(1, 5, -1, 100f, 30, 30), 10);
+                var round = new MissionRuntime(Def(1, 5, 100f, 30, 30), 10);
                 round.Begin();
                 round.ReportCorrect();
                 totalPaid += round.Resolve(record).coinsAwarded;
@@ -93,7 +91,7 @@ namespace ParcelSort.Offline
             r.AreEqual(5, record.Attempts, "every settled round counts as an attempt");
 
             // Resolve is idempotent for one round.
-            var once = new MissionRuntime(Def(1, 5, -1, 100f, 30, 30), 10);
+            var once = new MissionRuntime(Def(1, 5, 100f, 30, 30), 10);
             var freshRecord = new MissionRecord();
             once.Begin();
             once.ReportCorrect();
@@ -106,7 +104,7 @@ namespace ParcelSort.Offline
             r.Check(second.won && third.won, "repeat settles report the same verdict");
 
             // A loss pays nothing and does not touch the latches.
-            var lost = new MissionRuntime(Def(10, 0, -1, 100f, 30, 30), 20);
+            var lost = new MissionRuntime(Def(10, 0, 100f, 30, 30), 20);
             var lostRecord = new MissionRecord();
             lost.Begin();
             lost.ReportWrong();
@@ -135,8 +133,7 @@ namespace ParcelSort.Offline
             for (int seed = 0; seed < iterations; seed++)
             {
                 var rng = new Random(seed + 909);
-                MissionDef def = Def(rng.Next(1, 20), rng.Next(0, 8),
-                    rng.Next(2) == 0 ? -1 : rng.Next(0, 8), rng.Next(1, 60));
+                MissionDef def = Def(rng.Next(1, 20), rng.Next(0, 8), rng.Next(1, 60));
                 var run = new MissionRuntime(def, rng.Next(0, 200));
                 run.Begin();
 
@@ -170,7 +167,6 @@ namespace ParcelSort.Offline
                 {
                     bool within = run.Correct >= def.objective.targetDelivered &&
                                   run.Wrong <= def.objective.maxWrong &&
-                                  (def.objective.maxJams < 0 || run.Jams <= def.objective.maxJams) &&
                                   run.Elapsed <= def.objective.timeLimitSeconds;
                     if (!within)
                     {
