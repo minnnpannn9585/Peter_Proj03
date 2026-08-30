@@ -103,7 +103,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 17054c8916f69264fb83f0a3183c4904, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.Parcel
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.Parcel
 --- !u!114 &7654699274641082522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -115,4 +115,4 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1246991300749684e806411d46cbd8d5, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.ParcelRuntime
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.ParcelRuntime

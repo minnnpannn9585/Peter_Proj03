@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6723fa3079617ba468948c9a64a0c984, type: 3}
   m_Name: ModuleCatalog
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.ModuleCatalog
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.ModuleCatalog
   entries:
   - type: inlet
     prefab: {fileID: 3283126908879003007, guid: f234cf296a335374ba85d6295cad827f,
@@ -35,7 +35,15 @@ MonoBehaviour:
     type: 3}
   slotMarkerPrefab: {fileID: 4278459404569339038, guid: df7b6536ca6c9bf448ee72286e02cd9a,
     type: 3}
+  nodeSlotMarkerPrefab: {fileID: 52389376830407703, guid: 8af81510d0367230ad42d4dc09330849,
+    type: 3}
   gatePrefab: {fileID: 1483611736616784968, guid: 93591ac836bf075428dac6807b2db0a3,
+    type: 3}
+  boosterPrefab: {fileID: 752020227749313636, guid: a0b9d49a856cc2722da848bced3d0a20,
+    type: 3}
+  scannerPrefab: {fileID: 887665761867744351, guid: 76cacb6472f626756447568907eecb41,
+    type: 3}
+  autoArmPrefab: {fileID: 480187272856425316, guid: 702e7548247c39f3232cebce1bfc46e1,
     type: 3}
   parcelPrefab: {fileID: 847148177230689850, guid: d256356c9567e304baf4b925ed21d09c,
     type: 3}
