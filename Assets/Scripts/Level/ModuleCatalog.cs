@@ -24,10 +24,37 @@ namespace ParcelSort
 
         [Header("Equipment")]
         public GameObject slotMarkerPrefab;
+        public GameObject nodeSlotMarkerPrefab;
         public GameObject gatePrefab;
+        public GameObject boosterPrefab;
+        public GameObject scannerPrefab;
+        public GameObject autoArmPrefab;
 
         [Header("Packages")]
         public GameObject parcelPrefab;
+
+        /// <summary>
+        /// Prefab for one device kind. Every <see cref="DeviceType"/> is listed explicitly and
+        /// there is no default branch, so adding a device to the enum breaks the build here
+        /// instead of silently returning null at install time.
+        /// </summary>
+        public GameObject GetDevicePrefab(DeviceType device)
+        {
+            switch (device)
+            {
+                case DeviceType.Gate:
+                    return gatePrefab;
+                case DeviceType.Booster:
+                    return boosterPrefab;
+                case DeviceType.Scanner:
+                    return scannerPrefab;
+                case DeviceType.AutoArm:
+                    return autoArmPrefab;
+            }
+
+            Debug.LogError("ModuleCatalog has no prefab mapping for device '" + device + "'.");
+            return null;
+        }
 
         public GameObject GetPrefab(string type)
         {

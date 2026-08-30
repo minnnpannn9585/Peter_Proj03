@@ -8,6 +8,10 @@ namespace ParcelSort
     {
         public string id = string.Empty;
         public string displayName = string.Empty;
+
+        /// <summary>Level unlocked once every mission here is cleared. Empty means "last level".</summary>
+        public string nextLevel = string.Empty;
+
         public GridSettings grid = new GridSettings();
         public RuleSettings rules = new RuleSettings();
         public List<LoadoutEntry> loadout = new List<LoadoutEntry>();
@@ -15,6 +19,27 @@ namespace ParcelSort
         public List<NodeDef> nodes = new List<NodeDef>();
         public List<BeltDef> belts = new List<BeltDef>();
         public SpawnPlan spawn = new SpawnPlan();
+
+        /// <summary>Shop offer for this level. Empty when the level authors no "devices" block.</summary>
+        public DeviceCatalogConfig devices = new DeviceCatalogConfig();
+
+        /// <summary>Selectable rounds. Empty when the level authors no "missions" block.</summary>
+        public List<MissionDef> missions = new List<MissionDef>();
+
+        public bool TryGetMission(string missionId, out MissionDef mission)
+        {
+            for (int i = 0; i < missions.Count; i++)
+            {
+                if (string.Equals(missions[i].id, missionId))
+                {
+                    mission = missions[i];
+                    return true;
+                }
+            }
+
+            mission = null;
+            return false;
+        }
 
         public int LoadoutCount(DeviceType device)
         {
@@ -125,17 +150,71 @@ namespace ParcelSort
             var config = new LevelConfig
             {
                 id = root["id"].AsString(),
-                displayName = root["displayName"].AsString()
+                displayName = root["displayName"].AsString(),
+                nextLevel = root["nextLevel"].AsString()
             };
 
             ReadGrid(root["grid"], config.grid);
             ReadRules(root["rules"], config.rules);
             ReadGate(root["gate"], config.gate);
             ReadLoadout(root["loadout"], config.loadout);
+            ReadDevices(root["devices"], config.devices, config.gate);
             ReadNodes(root["nodes"], config.nodes);
             ReadBelts(root["belts"], config.belts);
             SpawnPlanParser.Read(root["spawn"], config.spawn);
+            MissionParser.Read(root["missions"], config.missions);
             return config;
+        }
+
+        /// <summary>
+        /// Reads the "devices" block: what the shop sells and how each device behaves. A missing
+        /// block leaves the catalog empty, which renders as an empty shop rather than an error,
+        /// so a level can still be played bare handed.
+        /// </summary>
+        static void ReadDevices(JsonValue value, DeviceCatalogConfig catalog, GateSettings gate)
+        {
+            catalog.Clear();
+            if (value.Kind != JsonKind.Object)
+            {
+                return;
+            }
+
+            for (int i = 0; i < DeviceTypes.All.Length; i++)
+            {
+                DeviceType device = DeviceTypes.All[i];
+                JsonValue item = value[DeviceTypes.JsonKey(device)];
+                if (item.Kind != JsonKind.Object)
+                {
+                    continue;
+                }
+
+                var spec = new DeviceSpec
+                {
+                    device = device,
+                    price = Mathf.Max(0, item["price"].AsInt()),
+                    cap = Mathf.Max(0, item["cap"].AsInt())
+                };
+
+                if (item.Has("target") && !InstallTargets.TryParse(item["target"].AsString(), out spec.target))
+                {
+                    throw new InvalidOperationException(
+                        "Device '" + DeviceTypes.JsonKey(device) + "' has unknown target '" +
+                        item["target"].AsString() + "'; expected \"beltSlot\" or \"node\".");
+                }
+
+                spec.holdSeconds = Mathf.Max(0.5f, item["holdSeconds"].AsFloat(gate.holdSeconds));
+                spec.speedBonus = Mathf.Max(1f, item["speedBonus"].AsFloat(spec.speedBonus));
+                spec.switchCooldown = Mathf.Max(0f, item["switchCooldown"].AsFloat(spec.switchCooldown));
+                spec.skipBlind = item["skipBlind"].AsBool(spec.skipBlind);
+
+                catalog.Add(spec);
+
+                // Keep the legacy gate block and the new devices block from disagreeing.
+                if (device == DeviceType.Gate && item.Has("holdSeconds"))
+                {
+                    gate.holdSeconds = spec.holdSeconds;
+                }
+            }
         }
 
         static void ReadGrid(JsonValue value, GridSettings grid)

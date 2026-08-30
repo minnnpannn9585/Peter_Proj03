@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Type-checks EVERY script in Assets/Scripts, MonoBehaviour included, against the API-shaped
+    shims in FullUnityShims.cs.
+
+    This project is never executed. It exists so that a compile error anywhere in the project -
+    a typo, a wrong overload, a missing member, a switch that no longer covers an enum - fails a
+    build here instead of waiting for someone to open Unity.
+
+    A green build is NOT proof that the Unity compile is clean. See ../OfflineTypecheck/README.md.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>FullTypecheck</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <WarningLevel>4</WarningLevel>
+    <!-- Shim members are intentionally unused / return constants. -->
+    <NoWarn>CS0169;CS0414;CS0649;CS0067;CS0660;CS0661;CS0108;CS0114</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="FullUnityShims.cs" />
+    <Compile Include="TestFrameworkShims.cs" />
+    <Compile Include="..\..\Assets\Scripts\**\*.cs" />
+    <Compile Include="..\..\Assets\Tests\**\*.cs" />
+  </ItemGroup>
+
+</Project>

@@ -137,7 +137,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e10c7b23b190c58499cef17086e7cbd3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.YardNode
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.YardNode
 --- !u!65 &8302413762241419111
 BoxCollider:
   m_ObjectHideFlags: 0

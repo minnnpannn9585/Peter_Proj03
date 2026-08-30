@@ -24,6 +24,12 @@ namespace ParcelSort
         /// <summary>Index into OutBelts chosen by the diverter lever.</summary>
         public int SelectedOutput { get; set; }
 
+        /// <summary>Installed arm driving this node's lever, or null while it is manual.</summary>
+        public AutoArmDevice AutoArm { get; set; }
+
+        /// <summary>Prep phase drop target for node-mounted devices. Only diverters have one.</summary>
+        public NodeDeviceSlot DeviceSlot { get; set; }
+
         /// <summary>Round robin cursor so merging inputs cannot starve each other.</summary>
         public int LastServedInput { get; set; }
 

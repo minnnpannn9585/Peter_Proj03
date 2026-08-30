@@ -1,63 +1,177 @@
 {
   "id": "level_01",
-  "displayName": "Tutorial Yard",
+  "displayName": "一号分拣场",
+  "nextLevel": "level_02",
+
   "grid": {
     "size": 2.0,
     "levelHeight": 1.5,
-    "cells": [32, 24],
+    "cells": [36, 24],
     "origin": [0, 0],
     "visualScale": 2.1,
     "viewPadCells": 1.25
   },
+
   "rules": {
     "baseSpeed": 5.0,
     "minGap": 1.15,
     "jamStallSeconds": 3.0,
     "fastMultiplier": 2.0,
     "minBeltCells": 2,
-    "maxBeltCells": 6,
+    // The central spur runs 6 cells, so the old cap of 6 would reject this layout.
+    "maxBeltCells": 8,
     "minRampCellsPerLevel": 2
   },
-  "gate": { "holdSeconds": 8.0 },
-  "loadout": [ { "device": "gate", "count": 2 } ],
 
-  // Authored parcel schedule. One burst of same-colour parcels at a time, then a rest.
-  // count / spacing / delayAfter accept a number, "random 3~5" or [3, 5].
-  "spawn": {
-    "seed": 101,
-    "startDelay": 1.0,
-    "repeat": 1,
-    "waves": [
-      { "inlet": "in_a", "color": "red",  "count": 6, "spacing": 0.0, "delayAfter": 4.0 },
-      { "inlet": "in_a", "color": "blue", "count": 5, "spacing": 0.0, "delayAfter": "random 3~5" },
-      { "inlet": "in_a", "color": "red",  "count": 4, "spacing": 0.0, "delayAfter": 4.0 },
-      { "inlet": "in_a", "color": "blue", "count": 5, "spacing": 0.0, "delayAfter": 0.0 }
-    ]
+  "gate": { "holdSeconds": 8.0 },
+
+  // Shop offer. Every price / cap / tuning value the game plays by is read from here;
+  // there is no duplicate constant in C#. Each cap is pinned to a feature of this map.
+  "devices": {
+    // cap 4 = the four points on this map worth buffering:
+    // before hub_a, before hub_b, before hub_m, and before the merge.
+    "gate":    { "price": 60,  "cap": 4, "target": "beltSlot", "holdSeconds": 8.0 },
+
+    // cap 3 = the three throughput trunks (red / green / blue).
+    "booster": { "price": 45,  "cap": 3, "target": "beltSlot", "speedBonus": 1.6 },
+
+    // cap 2 = the number of inlets. Forces "one per inlet"; stacking both on one
+    // line is self-punishing because the other inlet stays blind.
+    "scanner": { "price": 110, "cap": 2, "target": "beltSlot" },
+
+    // cap 1 = at least two of the three diverters must still be worked by hand.
+    "autoArm": { "price": 180, "cap": 1, "target": "node", "switchCooldown": 0.6, "skipBlind": true }
   },
 
-  "nodes": [
-    { "id": "in_a",      "type": "inlet",    "cell": [3, 12],  "facing": "E" },
-    { "id": "s_feed",    "type": "junction", "cell": [9, 12],  "plain": true },
-    { "id": "hub_1",     "type": "junction", "cell": [13, 12] },
-
-    { "id": "sa_1",      "type": "junction", "cell": [16, 15], "plain": true },
-    { "id": "sa_2",      "type": "junction", "cell": [22, 15], "plain": true },
-    { "id": "bay_red",   "type": "bay",      "cell": [27, 15], "color": "Red",  "facing": "E" },
-
-    { "id": "sb_1",      "type": "junction", "cell": [16, 9],  "plain": true },
-    { "id": "sb_2",      "type": "junction", "cell": [22, 9],  "plain": true },
-    { "id": "bay_blue",  "type": "bay",      "cell": [27, 9],  "color": "Blue", "facing": "E" }
+  // Three rounds of rising difficulty over one fixed map.
+  //
+  // Wave "count" is ALWAYS a constant integer: the objective is an absolute number, so a
+  // random count would let an unlucky roll make the round mathematically unwinnable.
+  // Randomness lives only in "spacing" and "delayAfter" - the rhythm varies, the yield does not.
+  "missions": [
+    {
+      "id": "m1_first_shift",
+      "displayName": "首日轮班",
+      "icon": "mission_m1",
+      "objective": { "targetDelivered": 15, "maxWrong": 3, "maxJams": -1, "timeLimit": 150 },
+      "modifiers": { "speedScale": 0.8, "blindRatio": 0.0, "mixColors": false },
+      "rewards": { "base": 30, "firstClear": 30 },
+      // Planned = 3 * (3 + 3) = 18, against a target of 15.
+      "spawn": {
+        "seed": 10101,
+        "startDelay": 1.0,
+        "repeat": 3,
+        "waves": [
+          { "inlet": "in_a", "color": "red",   "count": 3, "spacing": 1.1, "delayAfter": "3~4" },
+          { "inlet": "in_a", "color": "green", "count": 3, "spacing": 1.1, "delayAfter": "3~4" }
+        ]
+      }
+    },
+    {
+      "id": "m2_dual_flow",
+      "displayName": "双线并流",
+      "icon": "mission_m2",
+      "objective": { "targetDelivered": 46, "maxWrong": 6, "maxJams": 4, "timeLimit": 150 },
+      "modifiers": { "speedScale": 1.0, "blindRatio": 0.0, "mixColors": true },
+      "rewards": { "base": 55, "firstClear": 65 },
+      // Planned = 2 * (10 + 10 + 8) = 56, against a target of 46.
+      "spawn": {
+        "seed": 20202,
+        "startDelay": 0.8,
+        "repeat": 2,
+        "waves": [
+          { "inlet": "in_a", "colors": ["red", "green"], "count": 10, "spacing": 0.9, "delayAfter": "2~3" },
+          { "inlet": "in_b", "colors": ["green", "red"], "count": 10, "spacing": 0.9, "delayAfter": "2~3" },
+          { "inlet": "random", "color": "blue", "count": 8, "spacing": 1.0,
+            "parallel": true, "delayAfter": "3~4" }
+        ]
+      }
+    },
+    {
+      "id": "m3_night_blind",
+      "displayName": "夜班盲件",
+      "icon": "mission_m3",
+      "objective": { "targetDelivered": 84, "maxWrong": 9, "maxJams": 6, "timeLimit": 200 },
+      "modifiers": { "speedScale": 1.15, "blindRatio": 0.35, "mixColors": true },
+      "rewards": { "base": 90, "firstClear": 110 },
+      // Planned = 3 * (14 + 14 + 8) = 108, against a target of 84.
+      // 0.35 * 108 ~= 37.8 blind parcels, far past maxWrong 9 without two Scanners.
+      "spawn": {
+        "seed": 30303,
+        "startDelay": 0.6,
+        "repeat": 3,
+        "waves": [
+          { "inlet": "in_a", "colors": ["red", "green", "blue"], "count": 14, "spacing": 0.75, "delayAfter": "1~2" },
+          { "inlet": "in_b", "colors": ["green", "red", "blue"], "count": 14, "spacing": 0.75,
+            "parallel": true, "delayAfter": "2~3" },
+          { "inlet": "random", "colors": ["blue", "red"], "count": 8, "spacing": 0.8, "delayAfter": "2~3" }
+        ]
+      }
+    }
   ],
+
+  // 36 x 24 grid, 2 inlets and 3 bays.
+  //
+  //   x: 0    5    10   15   20   25   30   35
+  // z=20  ..I-----F----D-----N----M---N---R...
+  // z=12  .....................D----n----B...
+  // z=4   ..I-----F----D-----N----M---N---G...
+  //
+  // I=inlet  F=feed junction  D=diverter (AutoArm slot)  N=plain junction
+  // M=merge  R/G/B=red/green/blue bay
+  "nodes": [
+    { "id": "in_a",      "type": "inlet",    "cell": [2, 20],  "facing": "E" },
+    { "id": "fa",        "type": "junction", "cell": [8, 20],  "plain": true },
+    { "id": "hub_a",     "type": "junction", "cell": [13, 20] },
+    { "id": "r1",        "type": "junction", "cell": [19, 20], "plain": true },
+    { "id": "mrg_r",     "type": "junction", "cell": [24, 20] },
+    { "id": "r2",        "type": "junction", "cell": [28, 20], "plain": true },
+    { "id": "bay_red",   "type": "bay",      "cell": [32, 20], "color": "Red",   "facing": "E" },
+
+    { "id": "in_b",      "type": "inlet",    "cell": [2, 4],   "facing": "E" },
+    { "id": "fb",        "type": "junction", "cell": [8, 4],   "plain": true },
+    { "id": "hub_b",     "type": "junction", "cell": [13, 4] },
+    { "id": "g1",        "type": "junction", "cell": [19, 4],  "plain": true },
+    { "id": "mrg_g",     "type": "junction", "cell": [24, 4] },
+    { "id": "g2",        "type": "junction", "cell": [28, 4],  "plain": true },
+    { "id": "bay_green", "type": "bay",      "cell": [32, 4],  "color": "Green", "facing": "E" },
+
+    { "id": "xa_1",      "type": "junction", "cell": [17, 16], "plain": true },
+    { "id": "xb_1",      "type": "junction", "cell": [17, 8],  "plain": true },
+    { "id": "hub_m",     "type": "junction", "cell": [21, 12] },
+    { "id": "ra_1",      "type": "junction", "cell": [21, 17], "plain": true },
+    { "id": "rb_1",      "type": "junction", "cell": [21, 7],  "plain": true },
+    { "id": "mb_1",      "type": "junction", "cell": [26, 12], "plain": true },
+    { "id": "bay_blue",  "type": "bay",      "cell": [31, 12], "color": "Blue",  "facing": "E" }
+  ],
+
+  // 22 belts. The three bay approaches set allowInstall false: a device in front of a
+  // truck bay has no decision value and would cover the result the player needs to read.
+  // The other 19 generate 63 slots; plus 3 node slots that is 66 legal positions.
   "belts": [
-    { "id": "b_feed", "from": "in_a",   "to": "s_feed" },
-    { "id": "b_main", "from": "s_feed", "to": "hub_1", "canSpeed": true },
+    { "id": "b_in_a_fa",     "from": "in_a",  "to": "fa" },
+    { "id": "b_fa_hub_a",    "from": "fa",    "to": "hub_a", "canSpeed": true },
+    { "id": "b_hub_a_r1",    "from": "hub_a", "to": "r1",    "output": 0 },
+    { "id": "b_hub_a_xa1",   "from": "hub_a", "to": "xa_1",  "output": 1 },
+    { "id": "b_xa1_hub_m",   "from": "xa_1",  "to": "hub_m" },
+    { "id": "b_r1_mrg_r",    "from": "r1",    "to": "mrg_r", "canPause": true },
+    { "id": "b_mrg_r_r2",    "from": "mrg_r", "to": "r2" },
+    { "id": "b_r2_bay_red",  "from": "r2",    "to": "bay_red", "allowInstall": false },
 
-    { "id": "b_a1", "from": "hub_1", "to": "sa_1", "output": 0 },
-    { "id": "b_a2", "from": "sa_1",  "to": "sa_2", "canPause": true },
-    { "id": "b_a3", "from": "sa_2",  "to": "bay_red" },
+    { "id": "b_in_b_fb",     "from": "in_b",  "to": "fb" },
+    { "id": "b_fb_hub_b",    "from": "fb",    "to": "hub_b", "canSpeed": true },
+    { "id": "b_hub_b_g1",    "from": "hub_b", "to": "g1",    "output": 0 },
+    { "id": "b_hub_b_xb1",   "from": "hub_b", "to": "xb_1",  "output": 1 },
+    { "id": "b_xb1_hub_m",   "from": "xb_1",  "to": "hub_m" },
+    { "id": "b_g1_mrg_g",    "from": "g1",    "to": "mrg_g", "canPause": true },
+    { "id": "b_mrg_g_g2",    "from": "mrg_g", "to": "g2" },
+    { "id": "b_g2_bay_green","from": "g2",    "to": "bay_green", "allowInstall": false },
 
-    { "id": "b_b1", "from": "hub_1", "to": "sb_1", "output": 1 },
-    { "id": "b_b2", "from": "sb_1",  "to": "sb_2" },
-    { "id": "b_b3", "from": "sb_2",  "to": "bay_blue" }
+    { "id": "b_hub_m_ra1",   "from": "hub_m", "to": "ra_1",  "output": 0 },
+    { "id": "b_ra1_mrg_r",   "from": "ra_1",  "to": "mrg_r" },
+    { "id": "b_hub_m_rb1",   "from": "hub_m", "to": "rb_1",  "output": 1 },
+    { "id": "b_rb1_mrg_g",   "from": "rb_1",  "to": "mrg_g" },
+    { "id": "b_hub_m_mb1",   "from": "hub_m", "to": "mb_1",  "output": 2 },
+    { "id": "b_mb1_bay_blue","from": "mb_1",  "to": "bay_blue", "allowInstall": false }
   ]
 }

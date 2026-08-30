@@ -108,5 +108,36 @@ namespace ParcelSort
 
             return colors;
         }
+
+        /// <summary>
+        /// Bay node id to the colour it accepts. <see cref="AutoArmDevice"/> needs this to turn
+        /// "which bays does this branch reach" into "which colours should go down it".
+        /// </summary>
+        public Dictionary<string, DestinationColor> BayColorsById()
+        {
+            var byId = new Dictionary<string, DestinationColor>();
+            for (int i = 0; i < bays.Count; i++)
+            {
+                var bay = bays[i].GetComponent<TruckBay>();
+                if (bay != null)
+                {
+                    byId[bays[i].NodeId] = bay.AcceptsColor;
+                }
+            }
+
+            return byId;
+        }
+
+        /// <summary>Inlet node ids in graph order, for building a spawn schedule.</summary>
+        public List<string> InletIds()
+        {
+            var ids = new List<string>(inlets.Count);
+            for (int i = 0; i < inlets.Count; i++)
+            {
+                ids.Add(inlets[i].NodeId);
+            }
+
+            return ids;
+        }
     }
 }

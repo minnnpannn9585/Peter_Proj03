@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9a218f05aaf3eb74a918bfbb5ef14f61, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.InstallSlotMarker
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.InstallSlotMarker
 --- !u!65 &2041790741431757624
 BoxCollider:
   m_ObjectHideFlags: 0

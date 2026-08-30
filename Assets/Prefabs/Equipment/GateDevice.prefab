@@ -48,7 +48,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 174a4a2448f096d408bb88285f2b988a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.GateDevice
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.GateDevice
   bar: {fileID: 0}
   barRenderer: {fileID: 0}
   countdownRoot: {fileID: 0}

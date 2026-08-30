@@ -114,8 +114,7 @@ namespace ParcelSort
 
             parcel.transform.SetParent(ParcelRoot, true);
             belt.AppendParcel(parcel, entry);
-            parcel.StallTime = 0f;
-            parcel.JamCounted = false;
+            parcel.ResetFlow();
             parcel.RefreshPose();
             live.Add(parcel);
             return true;
@@ -142,6 +141,18 @@ namespace ParcelSort
             foreach (BeltPath belt in graph.AllBelts)
             {
                 StepBelt(belt, dt);
+
+                // Scanners are driven from here rather than from their own Update so a reveal
+                // lands on the same tick as the movement that carried the parcel past them,
+                // and so a whole round can be replayed headlessly at a fixed timestep.
+                List<ScannerDevice> scanners = belt.Scanners;
+                for (int s = 0; s < scanners.Count; s++)
+                {
+                    if (scanners[s] != null)
+                    {
+                        scanners[s].ScanPass();
+                    }
+                }
             }
 
             foreach (BeltPath belt in graph.AllBelts)
@@ -159,6 +170,11 @@ namespace ParcelSort
             List<ParcelRuntime> parcels = belt.Parcels;
             float speed = belt.EffectiveSpeed;
             float step = speed * dt;
+
+            // Tracks whether the parcel ahead is (directly or transitively) gate-held, so the
+            // exemption travels back down the queue instead of stopping at the barrier.
+            bool aheadGateHeld = false;
+
             int i = 0;
             while (i < parcels.Count)
             {
@@ -166,15 +182,27 @@ namespace ParcelSort
                 float before = parcel.Distance;
                 float target = before + step;
 
+                bool limitedByLeader = false;
                 if (i > 0)
                 {
-                    target = Mathf.Min(target, parcels[i - 1].Distance - MinGap);
+                    float leaderLimit = parcels[i - 1].Distance - MinGap;
+                    if (leaderLimit < target)
+                    {
+                        target = leaderLimit;
+                        limitedByLeader = true;
+                    }
                 }
 
                 float gate = belt.NextClosedGateDistance(before);
+                bool limitedByGate = false;
                 if (gate >= 0f)
                 {
-                    target = Mathf.Min(target, gate - GateGap);
+                    float gateLimit = gate - GateGap;
+                    if (gateLimit < target)
+                    {
+                        target = gateLimit;
+                        limitedByGate = true;
+                    }
                 }
 
                 if (i == 0 && target > belt.Length)
@@ -191,8 +219,25 @@ namespace ParcelSort
                 target = Mathf.Min(target, belt.Length);
                 parcel.Distance = Mathf.Max(before, target);
 
+                // This parcel is gate-held either because a closed gate capped it directly, or
+                // because it is queueing behind a parcel that is.
+                bool gateHeld = limitedByGate || (limitedByLeader && aheadGateHeld);
+                parcel.UpstreamGateHeld = gateHeld && !limitedByGate;
+
                 bool blocked = step <= 0.0001f || (parcel.Distance - before) < step * 0.5f;
-                if (blocked)
+
+                if (gateHeld)
+                {
+                    // A closed gate is the player choosing to queue parcels. Counting that as
+                    // congestion would make the Gate trigger the very failure it exists to avoid,
+                    // since a gate holds for 8s and the jam threshold is 3s. The gate always
+                    // reopens on its own, so the queue is guaranteed to drain and this exemption
+                    // cannot hide a real deadlock.
+                    parcel.GateWaitTime += dt;
+                    parcel.StallTime = 0f;
+                    parcel.JamCounted = false;
+                }
+                else if (blocked)
                 {
                     parcel.StallTime += dt;
                     float limit = rules != null ? rules.jamStallSeconds : 3f;
@@ -209,8 +254,10 @@ namespace ParcelSort
                 {
                     parcel.StallTime = 0f;
                     parcel.JamCounted = false;
+                    parcel.GateWaitTime = 0f;
                 }
 
+                aheadGateHeld = gateHeld;
                 i++;
             }
         }
@@ -264,8 +311,7 @@ namespace ParcelSort
 
             belt.RemoveParcel(parcel);
             next.AppendParcel(parcel, entry);
-            parcel.StallTime = 0f;
-            parcel.JamCounted = false;
+            parcel.ResetFlow();
             if (node.InBelts.Count > 1)
             {
                 node.LastServedInput = node.InBelts.IndexOf(belt);

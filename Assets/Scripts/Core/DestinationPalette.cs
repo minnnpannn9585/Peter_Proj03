@@ -9,6 +9,12 @@ namespace ParcelSort
         public static readonly Color Green = new Color(0.24f, 0.72f, 0.32f, 1f);
         public static readonly Color Yellow = new Color(0.95f, 0.78f, 0.16f, 1f);
 
+        /// <summary>
+        /// Worn by parcels whose destination is still hidden. Deliberately desaturated so it
+        /// cannot be mistaken for any bay colour at a glance.
+        /// </summary>
+        public static readonly Color Blind = new Color(0.55f, 0.55f, 0.58f, 1f);
+
         public static Color For(DestinationColor color)
         {
             switch (color)

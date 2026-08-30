@@ -1,13 +1,16 @@
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace ParcelSort
 {
+    /// <summary>Top right diagnostic readout. Kept from the original HUD, extended with the meta state.</summary>
     public class DebugHud : MonoBehaviour
     {
         [SerializeField] Text label;
 
         YardDirector director;
+        readonly StringBuilder builder = new StringBuilder(256);
 
         public void Bind(YardDirector yardDirector, Text hudLabel)
         {
@@ -25,24 +28,67 @@ namespace ParcelSort
                 return;
             }
 
-            string phase = director.Phase == GamePhase.Prep ? UiStrings.PhasePrep : UiStrings.PhaseRunning;
+            builder.Clear();
+            builder.Append(director.LevelDisplayName)
+                .Append("   [").Append(UiStrings.PhaseName(director.Phase)).Append("]\n");
+
+            MissionDef selected = director.SelectedMission;
+            if (selected != null)
+            {
+                builder.Append(selected.displayName);
+                MissionRuntime mission = director.Mission;
+                if (mission != null)
+                {
+                    builder.Append("   ").Append(mission.State);
+                }
+
+                builder.Append('\n');
+            }
+
             SpawnDirector spawner = director.Spawner;
-            string queued = spawner != null ? "  (queued " + spawner.Queued + ")" : string.Empty;
-            string text = director.LevelDisplayName + "   [" + phase + "]\n" +
-                          UiStrings.PackagesLeft + "     " + director.PackagesLeft +
-                          " / " + director.PackagesTotal + queued + "\n" +
-                          UiStrings.Spawned + "  " + director.Spawned + "\n" +
-                          UiStrings.Correct + "  " + director.Correct + "\n" +
-                          UiStrings.Wrong + "    " + director.Wrong + "\n" +
-                          UiStrings.Jams + "     " + director.Jams;
+            builder.Append(UiStrings.PackagesLeft).Append("     ")
+                .Append(director.PackagesLeft).Append(" / ").Append(director.PackagesTotal);
+            if (spawner != null)
+            {
+                builder.Append("  (queued ").Append(spawner.Queued).Append(')');
+            }
+
+            builder.Append('\n')
+                .Append(UiStrings.Spawned).Append("  ").Append(director.Spawned).Append('\n')
+                .Append(UiStrings.Correct).Append("  ").Append(director.Correct).Append('\n')
+                .Append(UiStrings.Wrong).Append("    ").Append(director.Wrong).Append('\n')
+                .Append(UiStrings.Jams).Append("     ").Append(director.Jams).Append('\n');
+
+            if (director.Wallet != null)
+            {
+                builder.Append(UiStrings.Coins).Append("    ").Append(director.Wallet.Balance).Append('\n');
+            }
 
             InstallManager installer = director.Installer;
             if (installer != null)
             {
-                text += "\n" + UiStrings.Gate + "     " + installer.InstalledCount + " installed";
+                builder.Append(UiStrings.Devices).Append("  ")
+                    .Append(installer.InstalledCount).Append(" installed");
+
+                DeviceInventory inventory = installer.Inventory;
+                if (inventory != null)
+                {
+                    for (int i = 0; i < DeviceTypes.All.Length; i++)
+                    {
+                        DeviceType device = DeviceTypes.All[i];
+                        if (inventory.Owned(device) == 0)
+                        {
+                            continue;
+                        }
+
+                        builder.Append("\n  ").Append(DeviceTypes.JsonKey(device)).Append(' ')
+                            .Append(inventory.Installed(device)).Append('/')
+                            .Append(inventory.Owned(device));
+                    }
+                }
             }
 
-            label.text = text;
+            label.text = builder.ToString();
         }
     }
 }
