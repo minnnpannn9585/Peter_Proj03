@@ -862,12 +862,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -1011,7 +1011,7 @@ GameObject:
   - component: {fileID: 977484740}
   - component: {fileID: 977484739}
   m_Layer: 0
-  m_Name: PrepBar
+  m_Name: HudRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1047,15 +1047,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 977484737}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ac3f48e03b45ebe45a1af2268d2b7d9a, type: 3}
+  m_Script: {fileID: 11500000, guid: 8f21dc8721a977f5ebb8e8320ea91055, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.PrepBarUI
-  root: {fileID: 977484737}
-  cardHolder: {fileID: 288762788}
-  cardPrefab: {fileID: 7307978802342413730, guid: db69f6e5be2f46f4dbd8896a4b2a170c,
-    type: 3}
-  startButton: {fileID: 2051612868}
-  hintLabel: {fileID: 1442641185}
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.HudRoot
+  canvas: {fileID: 592685092}
+  debugLabel: {fileID: 1438147412}
+  gmPanel: {fileID: 1797411025}
 --- !u!114 &977484740
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1539,7 +1536,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b936308c13939844aaeddf200592c832, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.DebugHud
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.DebugHud
   label: {fileID: 1438147415}
 --- !u!114 &1350989734
 MonoBehaviour:
@@ -1552,7 +1549,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d75f325003911c24abcc43521b7b5a7e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.PlayerClick
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.PlayerClick
   rayCamera: {fileID: 330585545}
   maxDistance: 500
   director: {fileID: 1350989736}
@@ -1568,7 +1565,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c166c10537f9ca34588e037830250026, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.YardCameraRig
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.YardCameraRig
   targetCamera: {fileID: 330585545}
   pitch: 75
   padding: 1.04
@@ -1588,14 +1585,15 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 857ecb009b3e4ec4da31e0268f8af55a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.YardDirector
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.YardDirector
   loader: {fileID: 1350989737}
   cameraRig: {fileID: 1350989735}
   hud: {fileID: 1350989733}
   hudLabel: {fileID: 1438147415}
   traffic: {fileID: 1350989740}
   installer: {fileID: 1350989739}
-  prepBar: {fileID: 977484739}
+  hudRoot: {fileID: 977484739}
+  spawner: {fileID: 0}
 --- !u!114 &1350989737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1607,7 +1605,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fa1fcaa5d83560f489f58b7a107c8758, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.LevelLoader
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.LevelLoader
   levelFileName: level_01.json
   catalog: {fileID: 11400000, guid: c0b083cee4a3faf4085fd64246d384aa, type: 2}
   yardRoot: {fileID: 869043655}
@@ -1637,7 +1635,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9148613e8a9de5949a57d52bde36dd3e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.InstallManager
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.InstallManager
   catalog: {fileID: 11400000, guid: c0b083cee4a3faf4085fd64246d384aa, type: 2}
   pickCamera: {fileID: 330585545}
 --- !u!114 &1350989740
@@ -1651,7 +1649,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 71d4b4285a4c85040bf1738f7eb5526b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.TrafficSystem
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.TrafficSystem
 --- !u!1 &1379380453
 GameObject:
   m_ObjectHideFlags: 0
@@ -1764,11 +1762,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 592685093}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 28, y: -24}
-  m_SizeDelta: {x: 480, y: 220}
-  m_Pivot: {x: 0, y: 1}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -24, y: -24}
+  m_SizeDelta: {x: 420, y: 220}
+  m_Pivot: {x: 1, y: 1}
 --- !u!114 &1438147414
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2088,8 +2086,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -8, y: -8}
-  m_SizeDelta: {x: 110, y: 110}
+  m_AnchoredPosition: {x: -24, y: -260}
+  m_SizeDelta: {x: 260, y: 140}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &1797411027
 MonoBehaviour:
@@ -2102,7 +2100,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b176b84efefc37248b3aad759d6e231b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ParcelSort.GmMenuUI
+  m_EditorClassIdentifier: ParcelSort::ParcelSort.GmMenuUI
   director: {fileID: 1350989736}
   map1Button: {fileID: 1134834790}
   map2Button: {fileID: 1979163341}

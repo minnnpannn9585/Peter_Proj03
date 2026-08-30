@@ -8,8 +8,27 @@ namespace ParcelSort
         public const string Wrong = "Wrong";
         public const string Jams = "Jams";
         public const string Gate = "Gates";
+        public const string Devices = "Devices";
+        public const string Coins = "Coins";
         public const string PhasePrep = "PREP";
         public const string PhaseRunning = "RUNNING";
+        public const string PhaseResult = "RESULT";
         public const string Start = "START";
+
+        /// <summary>Debug label text for a phase. Every phase is listed explicitly.</summary>
+        public static string PhaseName(GamePhase phase)
+        {
+            switch (phase)
+            {
+                case GamePhase.Prep:
+                    return PhasePrep;
+                case GamePhase.Running:
+                    return PhaseRunning;
+                case GamePhase.Result:
+                    return PhaseResult;
+            }
+
+            return phase.ToString();
+        }
     }
 }

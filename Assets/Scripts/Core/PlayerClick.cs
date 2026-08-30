@@ -65,7 +65,11 @@ namespace ParcelSort
             }
         }
 
-        /// <summary>Yard clicks are ignored over UI, while orbiting, and during prep.</summary>
+        /// <summary>
+        /// Yard clicks are ignored over UI, while orbiting the camera, and outside the round.
+        /// During prep the yard is arranged by dragging shop cards, not by clicking; on the result
+        /// screen the round is already settled, so a click on a gate would do nothing useful.
+        /// </summary>
         bool IsBlocked()
         {
             if (UnityEngine.EventSystems.EventSystem.current != null &&
@@ -89,7 +93,7 @@ namespace ParcelSort
                 director = FindFirstObjectByType<YardDirector>();
             }
 
-            return director != null && director.Phase == GamePhase.Prep;
+            return director != null && director.Phase != GamePhase.Running;
         }
     }
 }
