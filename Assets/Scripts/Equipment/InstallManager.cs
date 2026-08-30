@@ -16,6 +16,13 @@ namespace ParcelSort
     {
         const float ScreenPickRadius = 90f;
 
+        /// <summary>
+        /// Pixels the pointer must travel before a press on a placed device counts as a move.
+        /// Without this, a plain click would snap the device onto whatever free slot happened to
+        /// be nearest, which is a surprising way to lose a careful placement.
+        /// </summary>
+        const float MoveDragThreshold = 14f;
+
         /// <summary>A device the player has placed, and where.</summary>
         class Placement
         {
@@ -51,6 +58,11 @@ namespace ParcelSort
         Transform markerRoot;
         InstallSlotMarker hoveredMarker;
         NodeDeviceSlot hoveredNode;
+
+        /// <summary>The already-placed device the player is currently dragging, if any.</summary>
+        Placement dragged;
+        Vector2 dragOrigin;
+        bool dragPassedThreshold;
 
         LevelConfig config;
         YardGraph graph;
@@ -92,6 +104,7 @@ namespace ParcelSort
 
         public void BeginPrep(YardGraph yardGraph, LevelConfig levelConfig, DeviceInventory inventory)
         {
+            CancelMove();
             config = levelConfig;
             graph = yardGraph;
             if (inventory != null)
@@ -182,6 +195,7 @@ namespace ParcelSort
 
         public void EndPrep()
         {
+            CancelMove();
             ClearMarkers();
         }
 
@@ -220,6 +234,7 @@ namespace ParcelSort
         /// <summary>Destroys every placed device and hands the stock back to the inventory.</summary>
         public void ClearInstalls()
         {
+            CancelMove();
             for (int i = placements.Count - 1; i >= 0; i--)
             {
                 Placement placement = placements[i];
@@ -593,6 +608,487 @@ namespace ParcelSort
 
             Debug.LogError("InstallManager has no node install path for device '" + device + "'.");
             return false;
+        }
+
+        // ---------------------------------------------------------------- move an installed device
+
+        /// <summary>True while the player is dragging a device that is already on the yard.</summary>
+        public bool IsMovingDevice => dragged != null;
+
+        /// <summary>The device being dragged off its current slot, for HUD feedback.</summary>
+        public DeviceType MovingDevice => dragged != null ? dragged.device : DeviceType.Gate;
+
+        /// <summary>
+        /// Picking a placed device up and dropping it somewhere else, driven straight off the
+        /// mouse because devices are world objects and never enter the uGUI event system.
+        ///
+        /// A move is not "sell and re-buy": the same instance is re-seated, so no stock changes
+        /// hands and a drop on empty ground simply leaves the device where it was.
+        /// </summary>
+        void Update()
+        {
+            if (!InPrep)
+            {
+                CancelMove();
+                return;
+            }
+
+            if (dragged == null)
+            {
+                if (Input.GetMouseButtonDown(0) && !PointerOverUi())
+                {
+                    BeginMove(PointerPosition());
+                }
+
+                return;
+            }
+
+            Vector2 pointer = PointerPosition();
+
+            if (Input.GetMouseButtonUp(0) || !Input.GetMouseButton(0))
+            {
+                if (dragPassedThreshold)
+                {
+                    FinishMove();
+                }
+                else
+                {
+                    // A click, not a drag. Leave the device exactly where the player put it.
+                    CancelMove();
+                }
+
+                return;
+            }
+
+            if (!dragPassedThreshold &&
+                Vector2.Distance(pointer, dragOrigin) >= MoveDragThreshold)
+            {
+                dragPassedThreshold = true;
+            }
+
+            if (dragPassedThreshold)
+            {
+                UpdateHover(pointer, dragged.device);
+            }
+        }
+
+        /// <summary>Mouse position as a 2D screen point, which is what the hover API takes.</summary>
+        static Vector2 PointerPosition()
+        {
+            Vector3 position = Input.mousePosition;
+            return new Vector2(position.x, position.y);
+        }
+
+        static bool PointerOverUi()
+        {
+            UnityEngine.EventSystems.EventSystem system = UnityEngine.EventSystems.EventSystem.current;
+            return system != null && system.IsPointerOverGameObject();
+        }
+
+        void BeginMove(Vector2 screenPosition)
+        {
+            Placement placement = FindPlacementAt(screenPosition);
+            if (placement == null)
+            {
+                return;
+            }
+
+            dragged = placement;
+            dragOrigin = screenPosition;
+            dragPassedThreshold = false;
+        }
+
+        void FinishMove()
+        {
+            Placement placement = dragged;
+            InstallSlotMarker marker = hoveredMarker;
+            NodeDeviceSlot node = hoveredNode;
+            dragged = null;
+            dragPassedThreshold = false;
+            ClearHover();
+
+            if (placement == null)
+            {
+                return;
+            }
+
+            if (marker != null)
+            {
+                TryMove(placement, marker);
+            }
+            else if (node != null)
+            {
+                TryMove(placement, node);
+            }
+        }
+
+        void CancelMove()
+        {
+            if (dragged == null)
+            {
+                return;
+            }
+
+            dragged = null;
+            dragPassedThreshold = false;
+            ClearHover();
+        }
+
+        /// <summary>Moves an installed device to another belt slot. Returns false when refused.</summary>
+        public bool TryMoveTo(GameObject instance, InstallSlotMarker marker)
+        {
+            return TryMove(FindPlacement(instance), marker);
+        }
+
+        /// <summary>Moves an installed device to another node slot. Returns false when refused.</summary>
+        public bool TryMoveTo(GameObject instance, NodeDeviceSlot slot)
+        {
+            return TryMove(FindPlacement(instance), slot);
+        }
+
+        /// <summary>
+        /// Moves whatever sits on one belt slot onto another, addressing the device by the slot it
+        /// occupies. This is the shape the drag gesture ends up in, and the shape a test can drive.
+        /// </summary>
+        public bool TryMove(InstallSlotMarker fromMarker, InstallSlotMarker toMarker)
+        {
+            if (fromMarker == null || fromMarker.Belt == null)
+            {
+                return false;
+            }
+
+            return TryMove(FindBeltPlacement(fromMarker.Belt, fromMarker.SlotIndex), toMarker);
+        }
+
+        /// <summary>Moves the arm on one diverter onto another diverter's free slot.</summary>
+        public bool TryMove(NodeDeviceSlot fromSlot, NodeDeviceSlot toSlot)
+        {
+            if (fromSlot == null || fromSlot.Node == null)
+            {
+                return false;
+            }
+
+            return TryMove(FindNodePlacement(fromSlot.Node), toSlot);
+        }
+
+        bool TryMove(Placement placement, InstallSlotMarker marker)
+        {
+            if (!InPrep || placement == null || marker == null || marker.Belt == null)
+            {
+                return false;
+            }
+
+            if (placement.target != InstallTargetKind.BeltSlot || placement.instance == null)
+            {
+                marker.SetHovered(false);
+                return false;
+            }
+
+            BeltPath belt = marker.Belt;
+            int slotIndex = marker.SlotIndex;
+
+            if (belt == placement.belt && slotIndex == placement.slotIndex)
+            {
+                return false;
+            }
+
+            if (!belt.AllowInstall ||
+                slotIndex < 0 ||
+                slotIndex >= belt.SlotCount ||
+                belt.IsSlotOccupied(slotIndex))
+            {
+                marker.SetHovered(false);
+                return false;
+            }
+
+            if (config == null || !config.devices.TryGet(placement.device, out DeviceSpec spec))
+            {
+                return false;
+            }
+
+            BeltPath fromBelt = placement.belt;
+            int fromSlot = placement.slotIndex;
+
+            // Detach before validating the destination. A Booster moving along its own belt has to
+            // release that belt's bonus first, or it would be refused for colliding with itself.
+            if (!DetachBeltDevice(placement))
+            {
+                return false;
+            }
+
+            bool boosterClash = placement.device == DeviceType.Booster &&
+                                !Mathf.Approximately(belt.DeviceSpeedBonus, 1f);
+
+            if (boosterClash ||
+                !AttachBeltDevice(placement.device, placement.instance, belt, slotIndex, spec))
+            {
+                // A refused move must change nothing, so put it back exactly where it came from.
+                AttachBeltDevice(placement.device, placement.instance, fromBelt, fromSlot, spec);
+                marker.SetHovered(false);
+                RepaintMarkers();
+                return false;
+            }
+
+            placement.belt = belt;
+            placement.slotIndex = slotIndex;
+            RepaintMarkers();
+            return true;
+        }
+
+        bool TryMove(Placement placement, NodeDeviceSlot slot)
+        {
+            if (!InPrep || placement == null || slot == null || slot.Node == null)
+            {
+                return false;
+            }
+
+            if (placement.target != InstallTargetKind.Node || placement.instance == null)
+            {
+                slot.FlashBlocked();
+                return false;
+            }
+
+            YardNode node = slot.Node;
+            if (node == placement.node)
+            {
+                return false;
+            }
+
+            if (!slot.IsFree || node.AutoArm != null || node.OutBelts.Count < 2)
+            {
+                slot.FlashBlocked();
+                return false;
+            }
+
+            if (config == null || !config.devices.TryGet(placement.device, out DeviceSpec spec))
+            {
+                return false;
+            }
+
+            var arm = placement.instance.GetComponent<AutoArmDevice>();
+            if (arm == null)
+            {
+                return false;
+            }
+
+            YardNode fromNode = placement.node;
+            arm.Uninstall();
+
+            if (!AttachNodeDevice(placement.device, placement.instance, node, spec))
+            {
+                AttachNodeDevice(placement.device, placement.instance, fromNode, spec);
+                if (fromNode != null && fromNode.DeviceSlot != null)
+                {
+                    fromNode.DeviceSlot.SetOccupied(true);
+                }
+
+                slot.FlashBlocked();
+                return false;
+            }
+
+            slot.SetOccupied(true);
+            placement.node = node;
+            return true;
+        }
+
+        /// <summary>Releases a belt device from its slot, keeping the object alive for a re-seat.</summary>
+        static bool DetachBeltDevice(Placement placement)
+        {
+            GameObject go = placement.instance;
+            if (go == null)
+            {
+                return false;
+            }
+
+            switch (placement.device)
+            {
+                case DeviceType.Gate:
+                {
+                    var gate = go.GetComponent<GateDevice>();
+                    if (gate == null)
+                    {
+                        return false;
+                    }
+
+                    gate.Uninstall();
+                    return true;
+                }
+
+                case DeviceType.Booster:
+                {
+                    var booster = go.GetComponent<BoosterDevice>();
+                    if (booster == null)
+                    {
+                        return false;
+                    }
+
+                    booster.Uninstall();
+                    return true;
+                }
+
+                case DeviceType.Scanner:
+                {
+                    var scanner = go.GetComponent<ScannerDevice>();
+                    if (scanner == null)
+                    {
+                        return false;
+                    }
+
+                    scanner.Uninstall();
+                    return true;
+                }
+
+                case DeviceType.AutoArm:
+                    Debug.LogError("An AutoArm sits on a node, so it has no belt slot to leave.");
+                    return false;
+            }
+
+            Debug.LogError("InstallManager cannot detach device '" + placement.device + "'.");
+            return false;
+        }
+
+        Placement FindBeltPlacement(BeltPath belt, int slotIndex)
+        {
+            for (int i = 0; i < placements.Count; i++)
+            {
+                Placement placement = placements[i];
+                if (placement.target == InstallTargetKind.BeltSlot &&
+                    placement.belt == belt &&
+                    placement.slotIndex == slotIndex)
+                {
+                    return placement;
+                }
+            }
+
+            return null;
+        }
+
+        Placement FindNodePlacement(YardNode node)
+        {
+            for (int i = 0; i < placements.Count; i++)
+            {
+                Placement placement = placements[i];
+                if (placement.target == InstallTargetKind.Node && placement.node == node)
+                {
+                    return placement;
+                }
+            }
+
+            return null;
+        }
+
+        Placement FindPlacement(GameObject instance)
+        {
+            if (instance == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < placements.Count; i++)
+            {
+                if (placements[i].instance == instance)
+                {
+                    return placements[i];
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The placed device under the pointer. Tries real geometry first, then falls back to
+        /// screen distance, so picking a device up is as forgiving as dropping one and works even
+        /// for a placeholder prefab that carries no collider.
+        /// </summary>
+        Placement FindPlacementAt(Vector2 screenPosition)
+        {
+            Camera cam = PickCamera;
+            if (cam == null || placements.Count == 0)
+            {
+                return null;
+            }
+
+            Ray ray = cam.ScreenPointToRay(screenPosition);
+            int count = Physics.RaycastNonAlloc(ray, hits, 1000f);
+            float bestDistance = float.MaxValue;
+            Placement best = null;
+            for (int i = 0; i < count; i++)
+            {
+                Placement owner = PlacementOwning(hits[i].collider != null
+                    ? hits[i].collider.transform
+                    : null);
+                if (owner == null || hits[i].distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                bestDistance = hits[i].distance;
+                best = owner;
+            }
+
+            if (best != null)
+            {
+                return best;
+            }
+
+            float bestPixels = ScreenPickRadius;
+            for (int i = 0; i < placements.Count; i++)
+            {
+                GameObject instance = placements[i].instance;
+                if (instance == null)
+                {
+                    continue;
+                }
+
+                Vector3 projected = cam.WorldToScreenPoint(instance.transform.position);
+                if (projected.z <= 0f)
+                {
+                    continue;
+                }
+
+                float pixels = Vector2.Distance(screenPosition, new Vector2(projected.x, projected.y));
+                if (pixels < bestPixels)
+                {
+                    bestPixels = pixels;
+                    best = placements[i];
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// Walks up from a hit collider looking for a placed device. The walk is explicit rather
+        /// than a GetComponentInParent so any device kind is matched by identity, which keeps this
+        /// working for a future device that brings its own components.
+        /// </summary>
+        Placement PlacementOwning(Transform hit)
+        {
+            for (Transform t = hit; t != null; t = t.parent)
+            {
+                for (int i = 0; i < placements.Count; i++)
+                {
+                    GameObject instance = placements[i].instance;
+                    if (instance != null && instance.transform == t)
+                    {
+                        return placements[i];
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>Re-reads occupancy on every belt marker, so a vacated slot stops reading blocked.</summary>
+        void RepaintMarkers()
+        {
+            for (int i = 0; i < markers.Count; i++)
+            {
+                if (markers[i] != null)
+                {
+                    markers[i].SetHovered(false);
+                }
+            }
         }
 
         // ---------------------------------------------------------------- remove

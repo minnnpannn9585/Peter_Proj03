@@ -76,12 +76,8 @@ namespace ParcelSort
             objective.targetDelivered = Mathf.Max(0, value["targetDelivered"].AsInt());
             objective.maxWrong = Mathf.Max(0, value["maxWrong"].AsInt());
 
-            // A missing jam cap means "jams cannot lose the round", the same as an authored -1.
-            objective.maxJams = value.Has("maxJams") ? value["maxJams"].AsInt(-1) : -1;
-            if (objective.maxJams < 0)
-            {
-                objective.maxJams = -1;
-            }
+            // "maxJams" is intentionally not read. Jams never lose a round any more, so a level
+            // that still authors the key is loaded unchanged and the key is simply ignored.
 
             JsonValue limit = value.Has("timeLimit") ? value["timeLimit"] : value["timeLimitSeconds"];
             objective.timeLimitSeconds = Mathf.Max(0f, limit.AsFloat());

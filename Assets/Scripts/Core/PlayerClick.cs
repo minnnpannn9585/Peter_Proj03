@@ -93,7 +93,14 @@ namespace ParcelSort
                 director = FindFirstObjectByType<YardDirector>();
             }
 
-            return director != null && director.Phase != GamePhase.Running;
+            if (director == null)
+            {
+                return false;
+            }
+
+            // A paused yard is frozen, so it cannot be reconfigured either: pause is there to let
+            // the player look and think, not to hand them free unopposed switching time.
+            return director.Phase != GamePhase.Running || director.IsPaused;
         }
     }
 }

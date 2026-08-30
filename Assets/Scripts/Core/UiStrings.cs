@@ -15,6 +15,12 @@ namespace ParcelSort
         public const string PhaseResult = "RESULT";
         public const string Start = "START";
 
+        // Bottom left run controls. English per the project's language split (README P1).
+        public const string Pause = "PAUSE";
+        public const string Resume = "RESUME";
+        public const string Paused = "PAUSED";
+        public const string ExitLevel = "EXIT LEVEL";
+
         /// <summary>Debug label text for a phase. Every phase is listed explicitly.</summary>
         public static string PhaseName(GamePhase phase)
         {

@@ -136,9 +136,9 @@ namespace ParcelSort.Offline
 
             // Missions
             r.AreEqual(3, config.missions.Count, "three missions");
-            CheckMission(r, config, "m1_first_shift", "首日轮班", 15, 3, -1, 150f, 0.8f, 0f, false, 30, 30);
-            CheckMission(r, config, "m2_dual_flow", "双线并流", 46, 6, 4, 150f, 1.0f, 0f, true, 55, 65);
-            CheckMission(r, config, "m3_night_blind", "夜班盲件", 84, 9, 6, 200f, 1.15f, 0.35f, true, 90, 110);
+            CheckMission(r, config, "m1_first_shift", "首日轮班", 15, 3, 150f, 0.8f, 0f, false, 30, 30);
+            CheckMission(r, config, "m2_dual_flow", "双线并流", 46, 6, 150f, 1.0f, 0f, true, 55, 65);
+            CheckMission(r, config, "m3_night_blind", "夜班盲件", 84, 9, 200f, 1.15f, 0.35f, true, 90, 110);
 
             for (int i = 0; i < config.missions.Count; i++)
             {
@@ -184,7 +184,7 @@ namespace ParcelSort.Offline
 
         static void CheckMission(
             CheckRunner r, LevelConfig config, string id, string name,
-            int target, int maxWrong, int maxJams, float limit,
+            int target, int maxWrong, float limit,
             float speedScale, float blindRatio, bool mixColors, int baseCoins, int firstClear)
         {
             if (!config.TryGetMission(id, out MissionDef mission))
@@ -196,7 +196,6 @@ namespace ParcelSort.Offline
             r.AreEqual(name, mission.displayName, id + " display name");
             r.AreEqual(target, mission.objective.targetDelivered, id + " targetDelivered");
             r.AreEqual(maxWrong, mission.objective.maxWrong, id + " maxWrong");
-            r.AreEqual(maxJams, mission.objective.maxJams, id + " maxJams");
             r.AreClose(limit, mission.objective.timeLimitSeconds, 0.001f, id + " timeLimit");
             r.AreClose(speedScale, mission.modifiers.speedScale, 0.001f, id + " speedScale");
             r.AreClose(blindRatio, mission.modifiers.blindRatio, 0.001f, id + " blindRatio");

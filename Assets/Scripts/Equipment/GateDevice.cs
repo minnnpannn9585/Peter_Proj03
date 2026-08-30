@@ -177,13 +177,29 @@ namespace ParcelSort
             }
         }
 
+        /// <summary>
+        /// Detaches from the belt without destroying the object, so the very same gate can be
+        /// re-seated on another slot. Idempotent, and shared with <see cref="OnDestroy"/> so
+        /// "removed" and "moved" can never drift apart.
+        /// </summary>
+        public void Uninstall()
+        {
+            if (Belt == null)
+            {
+                return;
+            }
+
+            Belt.Gates.Remove(this);
+            Belt.SetSlotOccupied(SlotIndex, false);
+            Belt = null;
+            SlotIndex = -1;
+            IsClosed = false;
+            closedTime = 0f;
+        }
+
         void OnDestroy()
         {
-            if (Belt != null)
-            {
-                Belt.Gates.Remove(this);
-                Belt.SetSlotOccupied(SlotIndex, false);
-            }
+            Uninstall();
         }
     }
 }

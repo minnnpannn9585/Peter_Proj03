@@ -53,7 +53,7 @@
       "id": "m1_first_shift",
       "displayName": "首日轮班",
       "icon": "mission_m1",
-      "objective": { "targetDelivered": 15, "maxWrong": 3, "maxJams": -1, "timeLimit": 150 },
+      "objective": { "targetDelivered": 15, "maxWrong": 3, "timeLimit": 150 },
       "modifiers": { "speedScale": 0.8, "blindRatio": 0.0, "mixColors": false },
       "rewards": { "base": 30, "firstClear": 30 },
       // Planned = 3 * (3 + 3) = 18, against a target of 15.
@@ -71,7 +71,7 @@
       "id": "m2_dual_flow",
       "displayName": "双线并流",
       "icon": "mission_m2",
-      "objective": { "targetDelivered": 46, "maxWrong": 6, "maxJams": 4, "timeLimit": 150 },
+      "objective": { "targetDelivered": 46, "maxWrong": 6, "timeLimit": 150 },
       "modifiers": { "speedScale": 1.0, "blindRatio": 0.0, "mixColors": true },
       "rewards": { "base": 55, "firstClear": 65 },
       // Planned = 2 * (10 + 10 + 8) = 56, against a target of 46.
@@ -91,7 +91,7 @@
       "id": "m3_night_blind",
       "displayName": "夜班盲件",
       "icon": "mission_m3",
-      "objective": { "targetDelivered": 84, "maxWrong": 9, "maxJams": 6, "timeLimit": 200 },
+      "objective": { "targetDelivered": 84, "maxWrong": 9, "timeLimit": 200 },
       "modifiers": { "speedScale": 1.15, "blindRatio": 0.35, "mixColors": true },
       "rewards": { "base": 90, "firstClear": 110 },
       // Planned = 3 * (14 + 14 + 8) = 108, against a target of 84.

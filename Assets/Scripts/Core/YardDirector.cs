@@ -39,6 +39,14 @@ namespace ParcelSort
         public int Jams { get; private set; }
 
         public GamePhase Phase { get; private set; } = GamePhase.Prep;
+
+        /// <summary>
+        /// True while the player has frozen a running round from the HUD. Pause is not a phase:
+        /// the round is still Running and every placed device keeps its state, so resuming picks
+        /// up exactly where it stopped.
+        /// </summary>
+        public bool IsPaused { get; private set; }
+
         public TrafficSystem Traffic => traffic;
         public InstallManager Installer => installer;
         public LevelLoader Loader => loader;
@@ -62,6 +70,9 @@ namespace ParcelSort
 
         /// <summary>Raised when coins, stock or mission records change.</summary>
         public event Action ProgressChanged;
+
+        /// <summary>Raised whenever the round is frozen or unfrozen, so the HUD can relabel.</summary>
+        public event Action<bool> PauseChanged;
 
         public LevelConfig Config => loader != null ? loader.LoadedConfig : null;
 
@@ -217,13 +228,96 @@ namespace ParcelSort
 
         void Update()
         {
-            if (Phase != GamePhase.Running || Mission == null)
+            if (Phase != GamePhase.Running || IsPaused || Mission == null)
             {
                 return;
             }
 
             Mission.Tick(Time.deltaTime);
             CheckVerdict();
+        }
+
+        // ---------------------------------------------------------------- pause / exit
+
+        /// <summary>
+        /// Freezes or resumes a running round.
+        ///
+        /// The freeze is applied on two levels on purpose. The director stops the systems it owns
+        /// (traffic, spawning, the mission clock), and <see cref="Time.timeScale"/> goes to zero so
+        /// the components that age themselves off <see cref="Time.deltaTime"/> - gate hold timers,
+        /// AutoArm cooldowns - stop with them. Freezing only the director would let a closed gate
+        /// quietly expire while the yard stood still.
+        /// </summary>
+        public void SetPaused(bool value)
+        {
+            if (Phase != GamePhase.Running)
+            {
+                // Pause is meaningless outside a round; make sure none is left behind.
+                ClearPause();
+                return;
+            }
+
+            if (IsPaused == value)
+            {
+                return;
+            }
+
+            IsPaused = value;
+            Time.timeScale = value ? 0f : 1f;
+            traffic?.SetRunning(!value);
+            spawner?.SetRunning(!value);
+
+            PauseChanged?.Invoke(value);
+        }
+
+        public void TogglePause()
+        {
+            SetPaused(!IsPaused);
+        }
+
+        /// <summary>
+        /// Leaves the round and goes back to prep. The attempt is abandoned rather than settled:
+        /// no payout, no record, no result screen, because the player chose to walk away instead
+        /// of playing it out. Placed devices stay exactly where they are.
+        /// </summary>
+        public void ExitLevel()
+        {
+            if (Phase == GamePhase.Prep)
+            {
+                return;
+            }
+
+            ClearPause();
+            BackToPrep();
+        }
+
+        /// <summary>Drops any active pause without touching the phase.</summary>
+        void ClearPause()
+        {
+            if (!IsPaused)
+            {
+                // Another component may have left the clock stopped; prep and result always run.
+                if (!Mathf.Approximately(Time.timeScale, 1f))
+                {
+                    Time.timeScale = 1f;
+                }
+
+                return;
+            }
+
+            IsPaused = false;
+            Time.timeScale = 1f;
+            PauseChanged?.Invoke(false);
+        }
+
+        void OnDisable()
+        {
+            // Never leave the game clock stopped behind us.
+            if (IsPaused || !Mathf.Approximately(Time.timeScale, 1f))
+            {
+                IsPaused = false;
+                Time.timeScale = 1f;
+            }
         }
 
         /// <summary>Moves to the result screen the moment the mission has an answer.</summary>
@@ -242,6 +336,7 @@ namespace ParcelSort
         /// <summary>Loads a level file and drops straight into the prep phase.</summary>
         public void LoadMap(string fileName)
         {
+            ClearPause();
             ResolveDependencies();
             if (loader == null)
             {
@@ -334,6 +429,7 @@ namespace ParcelSort
 
         void EnterPrep(bool restoreInstalls)
         {
+            ClearPause();
             SetPhase(GamePhase.Prep);
             ResetCounters();
             SetInletsActive(false);
@@ -366,6 +462,16 @@ namespace ParcelSort
                 return;
             }
 
+            BackToPrep();
+        }
+
+        /// <summary>
+        /// The one way back to prep from a round, whether it was played out or walked away from.
+        /// Clears the yard and the mission, and keeps every placed device.
+        /// </summary>
+        void BackToPrep()
+        {
+            ClearPause();
             traffic?.SetRunning(false);
             traffic?.ClearAll();
             spawner?.SetRunning(false);
@@ -453,6 +559,7 @@ namespace ParcelSort
 
         void BeginRound(MissionDef mission)
         {
+            ClearPause();
             traffic?.ClearAll();
             ResetCounters();
 
@@ -487,6 +594,7 @@ namespace ParcelSort
                 return;
             }
 
+            ClearPause();
             SetPhase(GamePhase.Result);
             traffic?.SetRunning(false);
             spawner?.SetRunning(false);
@@ -564,6 +672,7 @@ namespace ParcelSort
         /// <summary>Persists progress on the way out so a quit during prep is not lost.</summary>
         void OnApplicationQuit()
         {
+            ClearPause();
             SyncProfile();
             store?.Save(Profile);
         }

@@ -553,7 +553,9 @@ Work order:
 
 1. Track **all seven** axes: correct %, avg handling time, damage rate, jam count, truck load %, equipment use count, energy.
 2. Weights → numeric score → letter **S A B C D** + star display.
-3. Soft fail vs hard fail: e.g. too many wrongs / full jam = shift over, still show rank.
+3. Soft fail vs hard fail: too many wrongs, or the clock, end the shift; **jams never do**. Jam
+   count is a scored axis (it drags the rank down), not a lose condition — see the 2026-08-30 row
+   in the Status Log.
 4. End-of-round card matching the brief (`⭐⭐⭐⭐⭐`, Rank S, Correct 99.8%, Avg delay 1.3s, Damage 0, Jams 0).
 5. Currency payout from rank for Phase 6 shop.
 
@@ -701,5 +703,6 @@ This file **replaces** the original design chat. Future agents: read this README
 | 2026-08-16 | 1 | Vertical slice: grid JSON `LevelLoader`, waypoint parcels, clickable 2-way splitter, red/blue sinks, English HUD. Camera is fixed Overcooked aerial. `level_01_copy.json` loads with no C# change. |
 | 2026-08-17 | 1 | Phase 1 closed. Centered Y-split layout, expandable `mapCells`, thin belt segments, pitch 75°, junction path latch, yellow A/B indicator. Ready for Phase 2 (gate / pause / speed). |
 | 2026-08-17 | 2 | Gate / pause / speed on tutorial JSON. Hopper backlog cubes (no dump on open), force-open at 8s, stall jam HUD. |
+| 2026-08-30 | 2 | Round controls + rules pass. (a) New bottom-left `RunControlPanel`: `PAUSE` / `RESUME` and `EXIT LEVEL`, shown during Running and Result. Pause freezes traffic, spawning, the mission clock **and** `Time.timeScale`, so gate holds and AutoArm cooldowns stop too; yard clicks are refused while paused. Exit abandons the round with no payout and no record, and returns to prep with every placed device untouched. (b) **The jam cap is gone**: `maxJams` no longer exists in `MissionObjective`, the parser, or `level_01.json`, and `MissionFailReason.TooManyJams` is retired. Jams are still counted and displayed. (c) Devices already on the yard can be **dragged from slot to slot during prep**. Each device gained an idempotent `Uninstall()`, the same instance is re-seated (no stock changes hands), and a refused move rolls back to the original slot. A press that does not travel 14px is treated as a click, not a move. |
 
 Add a row after every development round.

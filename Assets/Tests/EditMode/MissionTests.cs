@@ -13,7 +13,7 @@ namespace ParcelSort.Tests
     public class MissionTests
     {
         static MissionDef Def(
-            int target, int maxWrong, int maxJams, float limit,
+            int target, int maxWrong, float limit,
             int baseCoins = 30, int firstClear = 30, string id = "m_test")
         {
             return new MissionDef
@@ -24,7 +24,6 @@ namespace ParcelSort.Tests
                 {
                     targetDelivered = target,
                     maxWrong = maxWrong,
-                    maxJams = maxJams,
                     timeLimitSeconds = limit
                 },
                 rewards = new MissionRewards { baseCoins = baseCoins, firstClearCoins = firstClear }
@@ -43,7 +42,7 @@ namespace ParcelSort.Tests
         [Test]
         public void ReachingTheTargetWins()
         {
-            MissionRuntime run = Started(Def(3, 2, -1, 100f));
+            MissionRuntime run = Started(Def(3, 2, 100f));
             run.ReportCorrect();
             run.ReportCorrect();
             Assert.AreEqual(MissionState.Running, run.State);
@@ -55,7 +54,7 @@ namespace ParcelSort.Tests
         [Test]
         public void ExceedingMaxWrongLosesWithTooManyWrong()
         {
-            MissionRuntime run = Started(Def(10, 2, -1, 100f));
+            MissionRuntime run = Started(Def(10, 2, 100f));
             run.ReportWrong();
             run.ReportWrong();
             Assert.AreEqual(MissionState.Running, run.State, "wrong == maxWrong is still alive");
@@ -65,35 +64,33 @@ namespace ParcelSort.Tests
         }
 
         [Test]
-        public void ExceedingMaxJamsLosesWithTooManyJams()
+        public void JamsAreCountedButCanNeverLoseTheRound()
         {
-            MissionRuntime run = Started(Def(10, 5, 1, 100f));
-            run.ReportJam();
-            Assert.AreEqual(MissionState.Running, run.State);
-            run.ReportJam();
-            Assert.AreEqual(MissionState.Lost, run.State);
-            Assert.AreEqual(MissionFailReason.TooManyJams, run.FailReason);
-        }
-
-        [Test]
-        public void AJamCapOfMinusOneMeansJamsCannotLoseTheRound()
-        {
-            // M1 sets maxJams -1 on purpose: a beginner should not be punished by a mechanic
-            // they have not been taught yet.
-            MissionRuntime run = Started(Def(10, 5, -1, 100f));
-            for (int i = 0; i < 100; i++)
+            // Congestion is a read-out, not a fail state: a jam already costs the player time,
+            // and a hidden jam budget turned one slow lane into an unreadable instant loss.
+            MissionRuntime run = Started(Def(10, 5, 100f));
+            for (int i = 0; i < 500; i++)
             {
                 run.ReportJam();
             }
 
-            Assert.AreEqual(MissionState.Running, run.State);
-            Assert.AreEqual(100, run.Jams, "jams are still counted, they just do not lose");
+            Assert.AreEqual(MissionState.Running, run.State, "jams must never end a round");
+            Assert.AreEqual(MissionFailReason.None, run.FailReason);
+            Assert.AreEqual(500, run.Jams, "jams are still counted for the read-out");
+
+            // And a win still stands with a jam count far past any old cap.
+            for (int i = 0; i < 10; i++)
+            {
+                run.ReportCorrect();
+            }
+
+            Assert.AreEqual(MissionState.Won, run.State);
         }
 
         [Test]
         public void RunningOutOfTimeLosesWithTimeout()
         {
-            MissionRuntime run = Started(Def(10, 5, -1, 1f));
+            MissionRuntime run = Started(Def(10, 5, 1f));
             for (int i = 0; i < 120; i++)
             {
                 run.Tick(1f / 60f);
@@ -109,7 +106,7 @@ namespace ParcelSort.Tests
         {
             // A run that blows the error budget does not get to claim the win it reached on the
             // same parcel. This is what keeps "won implies within every limit" true.
-            MissionRuntime run = Started(Def(1, 0, -1, 100f));
+            MissionRuntime run = Started(Def(1, 0, 100f));
             run.ReportWrong();
             Assert.AreEqual(MissionState.Lost, run.State);
 
@@ -120,7 +117,7 @@ namespace ParcelSort.Tests
         [Test]
         public void ProgressCountersAreConsistent()
         {
-            MissionRuntime run = Started(Def(50, 50, -1, 100f), 56);
+            MissionRuntime run = Started(Def(50, 50, 100f), 56);
             run.ReportCorrect();
             run.ReportCorrect();
             run.ReportWrong();
@@ -142,7 +139,7 @@ namespace ParcelSort.Tests
 
             for (int attempt = 0; attempt < 6; attempt++)
             {
-                MissionRuntime run = Started(Def(1, 5, -1, 100f, 30, 30));
+                MissionRuntime run = Started(Def(1, 5, 100f, 30, 30));
                 run.ReportCorrect();
                 totalPaid += run.Resolve(record).coinsAwarded;
             }
@@ -157,7 +154,7 @@ namespace ParcelSort.Tests
         public void ResolveIsIdempotentForOneRound()
         {
             var record = new MissionRecord();
-            MissionRuntime run = Started(Def(1, 5, -1, 100f, 30, 30));
+            MissionRuntime run = Started(Def(1, 5, 100f, 30, 30));
             run.ReportCorrect();
 
             MissionOutcome first = run.Resolve(record);
@@ -176,7 +173,7 @@ namespace ParcelSort.Tests
         public void ALossPaysNothingAndLeavesTheLatchesAlone()
         {
             var record = new MissionRecord();
-            MissionRuntime run = Started(Def(10, 0, -1, 100f, 30, 30));
+            MissionRuntime run = Started(Def(10, 0, 100f, 30, 30));
             run.ReportWrong();
 
             MissionOutcome outcome = run.Resolve(record);
@@ -193,12 +190,12 @@ namespace ParcelSort.Tests
         {
             var record = new MissionRecord();
 
-            MissionRuntime win = Started(Def(1, 5, -1, 100f));
+            MissionRuntime win = Started(Def(1, 5, 100f));
             win.ReportCorrect();
             win.Resolve(record);
             Assert.IsTrue(record.Cleared);
 
-            MissionRuntime loss = Started(Def(1, 0, -1, 100f));
+            MissionRuntime loss = Started(Def(1, 0, 100f));
             loss.ReportWrong();
             loss.Resolve(record);
 
@@ -221,7 +218,7 @@ namespace ParcelSort.Tests
                 {
                     bool shouldWin = trace.Rng.Next(2) == 0;
                     int target = trace.Rng.Next(1, 10);
-                    MissionRuntime run = Started(Def(target, 5, -1, 1000f));
+                    MissionRuntime run = Started(Def(target, 5, 1000f));
 
                     int correct = shouldWin ? target : trace.Rng.Next(0, target);
                     for (int c = 0; c < correct; c++)
@@ -258,7 +255,6 @@ namespace ParcelSort.Tests
                 MissionDef def = Def(
                     trace.Rng.Next(1, 20),
                     trace.Rng.Next(0, 8),
-                    trace.Rng.Next(2) == 0 ? -1 : trace.Rng.Next(0, 8),
                     trace.Rng.Next(1, 60));
 
                 MissionRuntime run = Started(def, trace.Rng.Next(0, 200));
@@ -297,8 +293,6 @@ namespace ParcelSort.Tests
                         "won without reaching the target");
                     trace.Require(run.Wrong <= def.objective.maxWrong,
                         "won with too many misroutes");
-                    trace.Require(def.objective.maxJams < 0 || run.Jams <= def.objective.maxJams,
-                        "won with too many jams");
                     trace.Require(run.Elapsed <= def.objective.timeLimitSeconds,
                         "won after the clock expired");
                 }

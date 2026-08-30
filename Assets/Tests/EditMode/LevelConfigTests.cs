@@ -300,13 +300,13 @@ namespace ParcelSort.Tests
             Assert.AreEqual("m2_dual_flow", config.missions[1].id);
             Assert.AreEqual("m3_night_blind", config.missions[2].id);
 
-            AssertMission("m1_first_shift", "首日轮班", 15, 3, -1, 150f, 0.8f, 0f, false, 30, 30, 10101, 3);
-            AssertMission("m2_dual_flow", "双线并流", 46, 6, 4, 150f, 1.0f, 0f, true, 55, 65, 20202, 2);
-            AssertMission("m3_night_blind", "夜班盲件", 84, 9, 6, 200f, 1.15f, 0.35f, true, 90, 110, 30303, 3);
+            AssertMission("m1_first_shift", "首日轮班", 15, 3, 150f, 0.8f, 0f, false, 30, 30, 10101, 3);
+            AssertMission("m2_dual_flow", "双线并流", 46, 6, 150f, 1.0f, 0f, true, 55, 65, 20202, 2);
+            AssertMission("m3_night_blind", "夜班盲件", 84, 9, 200f, 1.15f, 0.35f, true, 90, 110, 30303, 3);
         }
 
         static void AssertMission(
-            string id, string name, int target, int maxWrong, int maxJams, float limit,
+            string id, string name, int target, int maxWrong, float limit,
             float speedScale, float blindRatio, bool mixColors,
             int baseCoins, int firstClear, int seed, int repeat)
         {
@@ -315,7 +315,6 @@ namespace ParcelSort.Tests
             Assert.AreEqual(name, mission.displayName, id + " displayName");
             Assert.AreEqual(target, mission.objective.targetDelivered, id + " targetDelivered");
             Assert.AreEqual(maxWrong, mission.objective.maxWrong, id + " maxWrong");
-            Assert.AreEqual(maxJams, mission.objective.maxJams, id + " maxJams");
             Assert.AreEqual(limit, mission.objective.timeLimitSeconds, 1e-3f, id + " timeLimit");
             Assert.AreEqual(speedScale, mission.modifiers.speedScale, 1e-3f, id + " speedScale");
             Assert.AreEqual(blindRatio, mission.modifiers.blindRatio, 1e-3f, id + " blindRatio");

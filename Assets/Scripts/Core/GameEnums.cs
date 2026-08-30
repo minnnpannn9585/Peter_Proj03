@@ -75,11 +75,14 @@ namespace ParcelSort
         Lost = 3
     }
 
+    /// <summary>
+    /// Why a round was lost. Value 2 used to be TooManyJams; jams no longer end a round, so the
+    /// number is left unused rather than re-assigned, keeping older saved values unambiguous.
+    /// </summary>
     public enum MissionFailReason
     {
         None = 0,
         TooManyWrong = 1,
-        TooManyJams = 2,
         Timeout = 3
     }
 
