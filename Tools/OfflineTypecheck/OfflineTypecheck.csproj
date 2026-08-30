@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Offline type-check + behaviour harness for the pure-logic half of the Unity project.
+
+    This sandbox has no Unity Editor, no Library/ and no UnityEngine.dll, so the real
+    project cannot be compiled here. This project compiles ONLY the classes that do not
+    derive from MonoBehaviour, against the hand written shims in UnityShims.cs, and then
+    runs real assertions over them (Program.cs).
+
+    A green build here is NOT the same as a clean Unity compile. See README.md.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>ParcelSort.Offline</RootNamespace>
+    <AssemblyName>OfflineTypecheck</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shims and the offline harness itself. -->
+    <Compile Include="UnityShims.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Checks\**\*.cs" />
+
+    <!-- Pure logic pulled straight out of the Unity project. No MonoBehaviour here. -->
+    <Compile Include="..\..\Assets\Scripts\Core\GameEnums.cs" />
+    <Compile Include="..\..\Assets\Scripts\Core\MiniJson.cs" />
+    <Compile Include="..\..\Assets\Scripts\Core\GridMath.cs" />
+    <Compile Include="..\..\Assets\Scripts\Core\DestinationPalette.cs" />
+    <Compile Include="..\..\Assets\Scripts\Core\ParcelData.cs" />
+    <Compile Include="..\..\Assets\Scripts\Meta\**\*.cs" />
+    <Compile Include="..\..\Assets\Scripts\Mission\**\*.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\LevelConfig.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\SpawnPlan.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\SpawnPlanParser.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\SpawnSchedule.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\BeltSlotMath.cs" />
+    <Compile Include="..\..\Assets\Scripts\Level\LevelTopologyCheck.cs" />
+  </ItemGroup>
+
+</Project>

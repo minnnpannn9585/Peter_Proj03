@@ -44,6 +44,10 @@
 ExportedObj/
 .consulo/
 *.csproj
+# ...but the hand written offline type-check project is source, not generated.
+!/Tools/OfflineTypecheck/*.csproj
+/Tools/OfflineTypecheck/bin/
+/Tools/OfflineTypecheck/obj/
 *.unityproj
 *.sln
 *.slnx
